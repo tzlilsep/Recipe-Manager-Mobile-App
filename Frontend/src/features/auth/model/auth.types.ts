@@ -1,3 +1,6 @@
+// src/features/auth/model/auth.types.ts
+
+
 /**
  * Internal app-level types used for UI, hooks, and state.
  */

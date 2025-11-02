@@ -1,3 +1,6 @@
+
+// src/features/auth/api/auth.api.types.ts
+
 /**
  * Data Transfer Objects (DTOs) used for REST API communication.
  * These types mirror the backend models exactly (snake_case if needed).
