@@ -1,13 +1,24 @@
-﻿namespace TS.Engine.Contracts
+// Backend\TS.Engine\Contracts\ShoppingListDtos.cs
+namespace TS.Engine.Contracts
 {
-    // Represents a single checklist item in data transfer form
-    public record ItemDto(string Text, bool IsChecked);
+    public sealed class ShoppingListItemDto
+    {
+        public string Id { get; init; } = string.Empty;
+        public string Name { get; init; } = string.Empty;
+        public bool Checked { get; init; }
+    }
 
-    // Represents a full shopping list for API/service communication
-    public record ShoppingListDto(
-        string UserId,
-        string ListId,
-        string Name,
-        IReadOnlyList<ItemDto> Items
-    );
+    public sealed class ShoppingListDto
+    {
+        public string UserId { get; init; } = string.Empty;
+        public string ListId { get; init; } = string.Empty;
+        public string Name { get; init; } = string.Empty;
+        public IReadOnlyList<ShoppingListItemDto> Items { get; init; } = Array.Empty<ShoppingListItemDto>();
+
+        public int Order { get; init; }  
+
+        // אופציונלי — תמיכה עתידית בשיתופים
+        public bool? IsShared { get; init; }
+        public IReadOnlyList<string>? SharedWith { get; init; }
+    }
 }

@@ -1,4 +1,5 @@
-﻿using Amazon.DynamoDBv2;
+﻿// MyApp\Backend\TS.AWS\Services\AwsShoppingListService.cs 
+using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using TS.AWS.Factories;
 using TS.Engine.Abstractions;
@@ -16,18 +17,23 @@ public sealed class AwsShoppingListService : IShoppingListService
         _ddb = AwsClientsFactory.CreateDynamoDbFromIdToken(idToken);
     }
 
-    // Returns list headers with up to 'take' items per list
+    // Returns list headers with up to 'take' items
     public async Task<IReadOnlyList<ShoppingListDto>> GetListsAsync(string userId, int take)
     {
-        // 1) Fetch all list headers
+        // 1) Fetch all list headers (LIST#)
         var headersResp = await _ddb.QueryAsync(new QueryRequest
         {
             TableName = TableName,
             KeyConditionExpression = "PK = :pk AND begins_with(SK, :sk)",
             ExpressionAttributeValues = new()
             {
-                [":pk"] = new($"USER#{userId}"),
-                [":sk"] = new("LIST#")
+                [":pk"] = new AttributeValue($"USER#{userId}"),
+                [":sk"] = new AttributeValue("LIST#")
+            },
+            ProjectionExpression = "PK, SK, #T, ListName, ListOrder",
+            ExpressionAttributeNames = new()
+            {
+                ["#T"] = "Type"
             }
         });
 
@@ -36,8 +42,12 @@ public sealed class AwsShoppingListService : IShoppingListService
             .Select(i => new
             {
                 ListId = i["SK"].S.Replace("LIST#", string.Empty),
-                Name = i.TryGetValue("ListName", out var n) ? n.S : "רשימה"
+                Name   = i.TryGetValue("ListName", out var n) ? n.S : "רשימה",
+                Order  = i.TryGetValue("ListOrder", out var o) && !string.IsNullOrWhiteSpace(o.N)
+                            ? int.Parse(o.N)
+                            : int.MaxValue // לישנות ללא Order נשים גבוה כדי שיזדנבו לסוף
             })
+            .OrderBy(h => h.Order)
             .ToList();
 
         // 2) For each list, fetch up to 'take' items (ordered by SK)
@@ -45,7 +55,7 @@ public sealed class AwsShoppingListService : IShoppingListService
 
         foreach (var h in headers)
         {
-            var items = new List<ItemDto>();
+            var items = new List<ShoppingListItemDto>();
 
             if (take > 0)
             {
@@ -55,49 +65,69 @@ public sealed class AwsShoppingListService : IShoppingListService
                     KeyConditionExpression = "PK = :pk AND begins_with(SK, :sk)",
                     ExpressionAttributeValues = new()
                     {
-                        [":pk"] = new($"USER#{userId}"),
-                        [":sk"] = new($"LIST#{h.ListId}#ITEM#")
+                        [":pk"] = new AttributeValue($"USER#{userId}"),
+                        [":sk"] = new AttributeValue($"LIST#{h.ListId}#ITEM#")
                     },
-                    // 'Text' is reserved in expressions; alias it via ExpressionAttributeNames
                     ExpressionAttributeNames = new()
                     {
                         ["#T"] = "Text",
                         ["#C"] = "IsChecked"
                     },
-                    ProjectionExpression = "#T, #C",
+                    ProjectionExpression = "SK, #T, #C",
                     Limit = take,
-                    ScanIndexForward = true // ascending by SK: ITEM#0000, ITEM#0001, ...
+                    ScanIndexForward = true // ascending by SK
                 });
 
                 foreach (var av in itemsResp.Items)
                 {
                     var text = av.TryGetValue("Text", out var txt) ? txt.S : "";
                     var isChecked = av.TryGetValue("IsChecked", out var chk) && (chk.BOOL ?? false);
-                    if (!string.IsNullOrWhiteSpace(text))
-                        items.Add(new ItemDto(text, isChecked));
+                    var sk = av.TryGetValue("SK", out var skVal) ? skVal.S : "";
+                    var id = ExtractItemIdFromSk(sk);
+
+                    if (!string.IsNullOrWhiteSpace(text) && !string.IsNullOrWhiteSpace(id))
+                    {
+                        items.Add(new ShoppingListItemDto
+                        {
+                            Id = id,
+                            Name = text,
+                            Checked = isChecked
+                        });
+                    }
                 }
             }
 
-            results.Add(new ShoppingListDto(userId, h.ListId, h.Name, items));
+            results.Add(new ShoppingListDto
+            {
+                UserId = userId,
+                ListId = h.ListId,
+                Name   = h.Name,
+                Items  = items,
+                Order  = h.Order == int.MaxValue ? results.Count : h.Order // fallback סביר
+            });
         }
 
-
-        return results;
+        // ליתר ביטחון — מחזירים ממוין
+        return results.OrderBy(r => r.Order).ToList();
     }
 
-    public async Task CreateListAsync(string userId, string listId, string name)
+    // יצירה עם תמיכה ב-order (אם לא נשלח — להצמיד לסוף)
+    public async Task CreateListAsync(string userId, string listId, string name, int? order = null)
     {
+        var finalOrder = order ?? await ComputeNextOrder(userId);
+
         // Conditional put to avoid overwriting an existing list
         await _ddb.PutItemAsync(new PutItemRequest
         {
             TableName = TableName,
             Item = new()
             {
-                ["PK"] = new($"USER#{userId}"),
-                ["SK"] = new($"LIST#{listId}"),
-                ["Type"] = new("List"),
-                ["ListName"] = new(name),
-                ["UpdatedAt"] = new(DateTime.UtcNow.ToString("o"))
+                ["PK"]        = new AttributeValue($"USER#{userId}"),
+                ["SK"]        = new AttributeValue($"LIST#{listId}"),
+                ["Type"]      = new AttributeValue("List"),
+                ["ListName"]  = new AttributeValue(name),
+                ["ListOrder"] = new AttributeValue { N = finalOrder.ToString() },
+                ["UpdatedAt"] = new AttributeValue(DateTime.UtcNow.ToString("o"))
             },
             ConditionExpression = "attribute_not_exists(PK) AND attribute_not_exists(SK)"
         });
@@ -112,8 +142,8 @@ public sealed class AwsShoppingListService : IShoppingListService
             KeyConditionExpression = "PK = :pk AND begins_with(SK, :sk)",
             ExpressionAttributeValues = new()
             {
-                [":pk"] = new($"USER#{userId}"),
-                [":sk"] = new($"LIST#{listId}")
+                [":pk"] = new AttributeValue($"USER#{userId}"),
+                [":sk"] = new AttributeValue($"LIST#{listId}")
             },
             ProjectionExpression = "PK, SK"
         });
@@ -137,7 +167,7 @@ public sealed class AwsShoppingListService : IShoppingListService
             await _ddb.BatchWriteItemAsync(new BatchWriteItemRequest { RequestItems = new() { [TableName] = batch } });
     }
 
-    // Loads a single list with all items
+    // Loads a single list with all items (כולל Order מה-Header)
     public async Task<ShoppingListDto> LoadAsync(string userId, string listId)
     {
         var resp = await _ddb.QueryAsync(new QueryRequest
@@ -146,13 +176,14 @@ public sealed class AwsShoppingListService : IShoppingListService
             KeyConditionExpression = "PK = :pk AND begins_with(SK, :sk)",
             ExpressionAttributeValues = new()
             {
-                [":pk"] = new($"USER#{userId}"),
-                [":sk"] = new($"LIST#{listId}")
+                [":pk"] = new AttributeValue($"USER#{userId}"),
+                [":sk"] = new AttributeValue($"LIST#{listId}")
             }
         });
 
         var name = "רשימה";
-        var items = new List<ItemDto>();
+        var items = new List<ShoppingListItemDto>();
+        var order = int.MaxValue;
 
         foreach (var av in resp.Items)
         {
@@ -160,18 +191,41 @@ public sealed class AwsShoppingListService : IShoppingListService
 
             if (t.S == "List")
             {
-                name = av.TryGetValue("ListName", out var n) ? n.S : name;
+                name  = av.TryGetValue("ListName", out var n) ? n.S : name;
+                order = av.TryGetValue("ListOrder", out var o) && !string.IsNullOrWhiteSpace(o.N)
+                    ? int.Parse(o.N) : order;
             }
             else if (t.S == "ListItem")
             {
                 var text = av.TryGetValue("Text", out var txt) ? txt.S : "";
                 var isChecked = av.TryGetValue("IsChecked", out var chk) && (chk.BOOL ?? false);
-                if (!string.IsNullOrWhiteSpace(text))
-                    items.Add(new ItemDto(text, isChecked));
+                var sk = av.TryGetValue("SK", out var skVal) ? skVal.S : "";
+                var id = ExtractItemIdFromSk(sk);
+
+                if (!string.IsNullOrWhiteSpace(text) && !string.IsNullOrWhiteSpace(id))
+                {
+                    items.Add(new ShoppingListItemDto
+                    {
+                        Id = id,
+                        Name = text,
+                        Checked = isChecked
+                    });
+                }
             }
         }
 
-        return new ShoppingListDto(userId, listId, name, items);
+        // אם עדיין אין Order (רשימות ישנות) — נצמיד לסוף
+        if (order == int.MaxValue)
+            order = await ComputeNextOrder(userId);
+
+        return new ShoppingListDto
+        {
+            UserId = userId,
+            ListId = listId,
+            Name   = name,
+            Items  = items,
+            Order  = order
+        };
     }
 
     public async Task SaveAsync(ShoppingListDto list)
@@ -183,8 +237,8 @@ public sealed class AwsShoppingListService : IShoppingListService
             KeyConditionExpression = "PK = :pk AND begins_with(SK, :sk)",
             ExpressionAttributeValues = new()
             {
-                [":pk"] = new($"USER#{list.UserId}"),
-                [":sk"] = new($"LIST#{list.ListId}#ITEM#")
+                [":pk"] = new AttributeValue($"USER#{list.UserId}"),
+                [":sk"] = new AttributeValue($"LIST#{list.ListId}#ITEM#")
             },
             ProjectionExpression = "PK, SK"
         });
@@ -199,17 +253,18 @@ public sealed class AwsShoppingListService : IShoppingListService
         foreach (var chunk in Chunk(deletes, 25))
             await _ddb.BatchWriteItemAsync(new BatchWriteItemRequest { RequestItems = new() { [TableName] = chunk } });
 
-        // Upsert list header
+        // Upsert list header (כולל Order)
         await _ddb.PutItemAsync(new PutItemRequest
         {
             TableName = TableName,
             Item = new()
             {
-                ["PK"] = new($"USER#{list.UserId}"),
-                ["SK"] = new($"LIST#{list.ListId}"),
-                ["Type"] = new("List"),
-                ["ListName"] = new(list.Name),
-                ["UpdatedAt"] = new(DateTime.UtcNow.ToString("o"))
+                ["PK"]        = new AttributeValue($"USER#{list.UserId}"),
+                ["SK"]        = new AttributeValue($"LIST#{list.ListId}"),
+                ["Type"]      = new AttributeValue("List"),
+                ["ListName"]  = new AttributeValue(list.Name),
+                ["ListOrder"] = new AttributeValue { N = list.Order.ToString() },
+                ["UpdatedAt"] = new AttributeValue(DateTime.UtcNow.ToString("o"))
             }
         });
 
@@ -218,15 +273,17 @@ public sealed class AwsShoppingListService : IShoppingListService
         for (int i = 0; i < list.Items.Count; i++)
         {
             var it = list.Items[i];
-            if (string.IsNullOrWhiteSpace(it.Text)) continue;
+            if (string.IsNullOrWhiteSpace(it.Name)) continue;
+
+            var itemSkSuffix = i.ToString("D4");
 
             puts.Add(new WriteRequest(new PutRequest(new()
             {
-                ["PK"] = new($"USER#{list.UserId}"),
-                ["SK"] = new($"LIST#{list.ListId}#ITEM#{i:D4}"),
-                ["Type"] = new("ListItem"),
-                ["Text"] = new(it.Text),
-                ["IsChecked"] = new AttributeValue { BOOL = it.IsChecked }
+                ["PK"]        = new AttributeValue($"USER#{list.UserId}"),
+                ["SK"]        = new AttributeValue($"LIST#{list.ListId}#ITEM#{itemSkSuffix}"),
+                ["Type"]      = new AttributeValue("ListItem"),
+                ["Text"]      = new AttributeValue(it.Name),
+                ["IsChecked"] = new AttributeValue { BOOL = it.Checked }
             })));
 
             if (puts.Count == 25)
@@ -239,6 +296,16 @@ public sealed class AwsShoppingListService : IShoppingListService
             await _ddb.BatchWriteItemAsync(new BatchWriteItemRequest { RequestItems = new() { [TableName] = puts } });
     }
 
+    private static string ExtractItemIdFromSk(string sk)
+    {
+        // "LIST#<listId>#ITEM#0007" -> "0007"
+        const string marker = "#ITEM#";
+        var idx = sk.LastIndexOf(marker, StringComparison.Ordinal);
+        return idx >= 0 && idx + marker.Length < sk.Length
+            ? sk.Substring(idx + marker.Length)
+            : string.Empty;
+    }
+
     // Utility: chunk a sequence into batches
     private static IEnumerable<List<T>> Chunk<T>(IEnumerable<T> src, int size)
     {
@@ -249,5 +316,40 @@ public sealed class AwsShoppingListService : IShoppingListService
             if (buf.Count == size) { yield return buf; buf = new(size); }
         }
         if (buf.Count > 0) yield return buf;
+    }
+
+    // מחשב next order ע"י סריקת כל ה-headers ומציאת המקסימום
+    private async Task<int> ComputeNextOrder(string userId)
+    {
+        var headersResp = await _ddb.QueryAsync(new QueryRequest
+        {
+            TableName = TableName,
+            KeyConditionExpression = "PK = :pk AND begins_with(SK, :sk)",
+            ExpressionAttributeValues = new()
+            {
+                [":pk"] = new AttributeValue($"USER#{userId}"),
+                [":sk"] = new AttributeValue("LIST#")
+            },
+            ProjectionExpression = "SK, #T, ListOrder",
+            ExpressionAttributeNames = new()
+            {
+                ["#T"] = "Type"
+            }
+        });
+
+        int max = -1;
+        foreach (var i in headersResp.Items.Where(i => i.TryGetValue("Type", out var t) && t.S == "List"))
+        {
+            if (i.TryGetValue("ListOrder", out var o) && !string.IsNullOrWhiteSpace(o.N))
+            {
+                if (int.TryParse(o.N, out var v) && v > max) max = v;
+            }
+            else
+            {
+                // אם אין Order – נתייחס כאל "בסוף" באמצעות אינדקס זמני
+                max = Math.Max(max, 0);
+            }
+        }
+        return max + 1;
     }
 }

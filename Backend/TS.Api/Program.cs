@@ -1,5 +1,9 @@
-﻿using TS.Engine.Abstractions; // IAuthService abstraction (from engine layer)
+﻿// MyApp\Backend\TS.Api\Program.cs
+using TS.Engine.Abstractions; // IAuthService abstraction (from engine layer)
 using TS.AWS.Auth;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using TS.AWS.Factories;
 
 namespace TS.Api
 {
@@ -11,6 +15,8 @@ namespace TS.Api
 
             // ✅ חשוב: לגרום לשרת להאזין גם למכשירים אחרים ברשת, לא רק ל-localhost
             builder.WebHost.UseUrls("http://0.0.0.0:5005");
+
+            builder.Services.AddScoped<IShoppingListServiceFactory, AwsShoppingListServiceFactory>();
 
             // Register MVC controllers
             builder.Services.AddControllers();
@@ -31,6 +37,39 @@ namespace TS.Api
             // Dependency Injection setup
             builder.Services.AddScoped<IAuthService, AwsAuthService>();
 
+            // ✅ הוספת אימות JWT (Cognito)
+            builder.Services
+           .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+           .AddJwtBearer(options =>
+    {
+        // ה־User Pool שלך (כבר נכון)
+        var authority = "https://cognito-idp.eu-central-1.amazonaws.com/eu-central-1_dT2wx55fl";
+
+        options.Authority = authority;
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            // 👇 השורה החסרה שגורמת לשגיאת IDX10204 להיעלם
+            ValidIssuer = authority,
+
+            // להשאיר פשוט כרגע
+            ValidateAudience = false
+            // אם תרצי לנעול ל-App Client מסוים:
+            // ValidateAudience = true,
+            // ValidAudience = "<app client id>"
+        };
+
+        // עוזר בדיבוג במקרה ויהיו עוד שגיאות
+        options.IncludeErrorDetails = true;
+    });
+
+
+            builder.Services.AddAuthorization();
+
+            // ❗ אם יש לך מימוש בפועל של IShoppingListServiceFactory – רשמי אותו כאן:
+            // builder.Services.AddScoped<IShoppingListServiceFactory, YourShoppingListServiceFactory>();
+
             var app = builder.Build();
 
             // Swagger UI visible only in Development mode
@@ -49,7 +88,8 @@ namespace TS.Api
             // Enable CORS before routing
             app.UseCors("Frontend");
 
-            // Authorization middleware (reserved for JWT integration later)
+            // ✅ סדר ביניים נכון: קודם Authentication ואז Authorization
+            app.UseAuthentication();
             app.UseAuthorization();
 
             // Map controller endpoints

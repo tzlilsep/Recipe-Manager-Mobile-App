@@ -3,12 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36518.9
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TS.UI", "TS.UI\TS.UI.csproj", "{B9041212-DC72-483B-9188-F2C2E669291B}"
-	ProjectSection(ProjectDependencies) = postProject
-		{24265FA4-EDB1-420B-A4AC-DB3D6A3651A6} = {24265FA4-EDB1-420B-A4AC-DB3D6A3651A6}
-		{99008DF8-1388-41B0-AA4F-A7C9CF597D0A} = {99008DF8-1388-41B0-AA4F-A7C9CF597D0A}
-	EndProjectSection
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TS.Engine", "TS.Engine\TS.Engine.csproj", "{99008DF8-1388-41B0-AA4F-A7C9CF597D0A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TS.AWS", "TS.AWS\TS.AWS.csproj", "{24265FA4-EDB1-420B-A4AC-DB3D6A3651A6}"
@@ -29,11 +23,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{B9041212-DC72-483B-9188-F2C2E669291B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B9041212-DC72-483B-9188-F2C2E669291B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B9041212-DC72-483B-9188-F2C2E669291B}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
-		{B9041212-DC72-483B-9188-F2C2E669291B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B9041212-DC72-483B-9188-F2C2E669291B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{99008DF8-1388-41B0-AA4F-A7C9CF597D0A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{99008DF8-1388-41B0-AA4F-A7C9CF597D0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{99008DF8-1388-41B0-AA4F-A7C9CF597D0A}.Release|Any CPU.ActiveCfg = Release|Any CPU

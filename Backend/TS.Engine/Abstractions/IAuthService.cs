@@ -1,4 +1,5 @@
-﻿namespace TS.Engine.Abstractions
+﻿//MyApp\Backend\TS.Engine\Abstractions\IAuthService.cs
+namespace TS.Engine.Abstractions
 {
     // Minimal auth contract used by the API. Register is deferred for now.
     public interface IAuthService

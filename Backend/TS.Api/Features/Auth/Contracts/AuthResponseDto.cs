@@ -1,4 +1,5 @@
-﻿namespace TS.Api.Features.Auth.Contracts
+﻿// MyApp\Backend\TS.Api\Features\Auth\Contracts\AuthResponseDto.cs
+namespace TS.Api.Features.Auth.Contracts
 {
     /// <summary>
     /// Response shape returned to the mobile client on successful auth.

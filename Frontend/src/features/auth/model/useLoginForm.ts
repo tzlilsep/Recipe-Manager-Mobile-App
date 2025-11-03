@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import { authService } from '../api/auth.service';
+import { useAuth } from './auth.context';
 
 /**
  * Hook responsible for managing login/register form state and calling the AuthService.
@@ -14,7 +15,8 @@ export function useLoginForm(onSuccess: (username: string) => void) {
   const [loading, setLoading] = useState(false);
 
   const toggleMode = () => setIsRegister(!isRegister);
-
+  const { setAuth } = useAuth();
+  
   const handleSubmit = async () => {
     if (isRegister && password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match');
@@ -35,6 +37,13 @@ export function useLoginForm(onSuccess: (username: string) => void) {
       Alert.alert('Error', result.error || 'Authentication failed');
       return;
     }
+    
+    setAuth({
+    token: result.token ?? null,
+    userId: result.user?.id ?? null,
+    userName: result.user?.name ?? null,
+     });
+
 
     onSuccess(username);
   };

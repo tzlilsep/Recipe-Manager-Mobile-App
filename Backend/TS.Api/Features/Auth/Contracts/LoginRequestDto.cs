@@ -1,4 +1,5 @@
-﻿namespace TS.Api.Features.Auth.Contracts
+﻿// MyApp\Backend\TS.Api\Features\Auth\Contracts\LoginRequestDto.cs
+namespace TS.Api.Features.Auth.Contracts
 {
     /// <summary>
     /// Request body for POST /api/auth/login.

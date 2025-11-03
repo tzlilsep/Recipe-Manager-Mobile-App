@@ -1,4 +1,5 @@
-﻿using Amazon;
+﻿// MyApp\Backend\TS.AWS\Factories\AwsClientsFactory.cs
+using Amazon;
 using Amazon.CognitoIdentity;
 using Amazon.DynamoDBv2;
 using Amazon.Runtime;

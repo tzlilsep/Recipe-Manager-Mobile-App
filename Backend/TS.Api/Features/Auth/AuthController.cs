@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿// MyApp\Backend\TS.Api\Features\Auth\AuthController.cs
+using Microsoft.AspNetCore.Mvc;
 using TS.Engine.Abstractions;                 // IAuthService (engine)
 using TS.Api.Features.Auth.Contracts;         // DTOs
 

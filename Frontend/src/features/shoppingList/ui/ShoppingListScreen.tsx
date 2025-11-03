@@ -1,436 +1,251 @@
-// src/features/shoppingList/ui/ShoppingListScreen.tsx
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-} from 'react-native';
+import React, { useEffect } from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  ArrowRight,
-  Plus,
-  Trash2,
-  Check,
-  ShoppingBasket,
-  Edit2,
-} from 'lucide-react-native';
-import { Button } from '../../../components/ui/button';
-import { useShoppingLists } from '../model/useShoppingLists';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ShoppingListData } from '../model/shopping.types';
+import { useShoppingLists } from '../model/useShoppingLists';
+import { ShoppingListsScreen } from './screens/ShoppingListsScreen';
+import { ShoppingListDetailsScreen } from './screens/ShoppingListDetailsScreen';
+import { useAuth } from '../../auth/model/auth.context';
+import { shoppingService } from '../api/shopping.service';
 
 type Props = {
   onBack: () => void;
   initialLists?: ShoppingListData[];
 };
 
+const CACHE_KEY = 'shopping/lists:v1';
+
 export function ShoppingListScreen({ onBack, initialLists = [] }: Props) {
   const {
     lists,
+    setLists,
     selectedListId,
     setSelectedListId,
     currentList,
     addList,
-    deleteList,
+    /* deleteList,  <-- מוסר: לא משתמשים כדי לא לשנות order */
     renameList,
     addItem,
     deleteItem,
     toggleItem,
     clearCompleted,
-  } = useShoppingLists(initialLists);
+  } = useShoppingLists(
+  initialLists,
+  async (listsToPersist) => {
+    // אם אין טוקן – רק קאש מקומי
+    if (!auth?.token) {
+      try {
+        const sorted = sortByOrder(listsToPersist as any);
+        await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(sorted));
+      } catch {}
+      return;
+    }
 
-  const [newListName, setNewListName] = useState('');
-  const [newItemName, setNewItemName] = useState('');
-  const [editedListName, setEditedListName] = useState('');
-  const [isEditingListName, setIsEditingListName] = useState(false);
+    // יש טוקן – שומרות לענן וגם מעדכנות קאש
+    try {
+      await shoppingService.saveMany(auth.token, listsToPersist);
+      const sorted = sortByOrder(listsToPersist as any);
+      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(sorted));
+    } catch (e) {
+      console.warn('Failed to persist lists to server:', e);
+    }
+  }
+);
 
+  const { auth } = useAuth();
   const insets = useSafeAreaInsets();
   const safeTop = insets.top && insets.top > 0 ? insets.top : 44;
 
-  // מסך רשימה נבחרת
+  /** Utility: always return a list sorted by `order` (fallback to index). */
+  const sortByOrder = (arr: ShoppingListData[]) =>
+    [...arr].sort((a: any, b: any) => {
+      const ao = a.order ?? Number.MAX_SAFE_INTEGER;
+      const bo = b.order ?? Number.MAX_SAFE_INTEGER;
+      if (ao !== bo) return ao - bo;
+      // tie-breaker: keep stable by id to avoid jitter
+      return String(a.id).localeCompare(String(b.id));
+    });
+
+  /**
+   * Create-list handler:
+   * - Assigns incremental `order` so the new list appears at the bottom.
+   * - If token exists: creates on server with that `order`, else local.
+   * - Writes to cache.
+   */
+  const handleCreateList = async (name: string) => {
+    const finalName = name?.trim() || 'רשימה חדשה';
+
+    const appendWithOrder = (base: ShoppingListData[], newList: ShoppingListData) => {
+      const nextOrder =
+        base.length === 0 ? 0 : Math.max(...base.map(l => (l as any).order ?? -1)) + 1;
+      const withOrder = { ...(newList as any), order: nextOrder } as any;
+      const next = sortByOrder([...base, withOrder]);
+      AsyncStorage.setItem(CACHE_KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    };
+
+    if (!auth.token) {
+      // Local only
+      setLists(prev => appendWithOrder(prev, { id: Date.now(), name: finalName, items: [] } as any));
+      return;
+    }
+
+    try {
+      // <<< שולחים order לשרת כבר ביצירה
+      const current = lists;
+      const nextOrder =
+        current.length === 0 ? 0 : Math.max(...current.map(l => (l as any).order ?? -1)) + 1;
+      const created = await shoppingService.createList(auth.token, finalName, Date.now(), nextOrder);
+
+      setLists(prev => {
+        const next = sortByOrder([...prev, created]);
+        AsyncStorage.setItem(CACHE_KEY, JSON.stringify(next)).catch(() => {});
+        return next;
+      });
+    } catch (e) {
+      console.warn('Create list failed, falling back to local:', e);
+      setLists(prev => appendWithOrder(prev, { id: Date.now(), name: finalName, items: [] } as any));
+    }
+  };
+
+  /**
+   * ✅ Delete-list handler (ענן + לוקאלי) — לא נוגעים ב-order של אחרות.
+   * - אופטימי: מסיר מה־state ומעדכן Cache.
+   * - אם יש token: שולח DELETE לשרת.
+   */
+  const handleDeleteList = async (id: number) => {
+    // אופטימי: הסרה מקומית ושמירת קאש (בלי רה-אינדוקס order)
+    setLists(prev => {
+      const next = prev.filter(l => l.id !== id);
+      const sorted = sortByOrder(next); // רק סידור לפי order קיים; לא משנים ערכים
+      AsyncStorage.setItem(CACHE_KEY, JSON.stringify(sorted)).catch(() => {});
+      return sorted;
+    });
+
+    if (selectedListId === id) setSelectedListId(null);
+
+    if (auth.token) {
+      try {
+        await shoppingService.deleteList(auth.token, id); // מחיקה בענן
+      } catch (e) {
+        console.warn('Failed to delete on server:', e);
+        // אופציונלי: לשקול Rollback/טוסט; לפי בקשתך נשאיר פשוט.
+      }
+    }
+  };
+
+  /**
+   * Persist reordering from DraggableFlatList:
+   * - Normalize `order` to match visual index and persist to cache.
+   * - If authenticated: also persist to server (optimistic).
+   */
+  const handleReorder = async (nextLists: ShoppingListData[]) => {
+    const normalized = nextLists.map((l, idx) => ({ ...(l as any), order: idx })) as any[];
+    const sorted = sortByOrder(normalized);
+
+    setLists(sorted);
+    AsyncStorage.setItem(CACHE_KEY, JSON.stringify(sorted)).catch(() => {});
+
+    if (auth.token) {
+      try {
+        await shoppingService.saveMany(auth.token, sorted);
+      } catch (e) {
+        console.warn('Failed to persist reorder to server:', e);
+      }
+    }
+  };
+
+  /** 1) Hydration from local cache. */
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(CACHE_KEY);
+        if (!isMounted) return;
+        if (raw) {
+          const cached: ShoppingListData[] = JSON.parse(raw);
+          if (Array.isArray(cached)) {
+            setLists(sortByOrder(cached as any));
+          }
+        }
+      } catch {
+        // ignore cache errors
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [setLists]);
+
+  /**
+   * 2) Remote fetch when authenticated: merge and respect server `order` if present.
+   */
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      if (!auth.token) return;
+      try {
+        const remote = await shoppingService.getLists(auth.token, 20);
+        if (!isMounted) return;
+
+        setLists(prev => {
+          const orderMap = new Map(prev.map(l => [l.id, (l as any).order]));
+          const merged = remote.map((l, idx) => ({
+            ...l,
+            order: orderMap.get(l.id) ?? l.order ?? idx,
+          })) as any[];
+          const sorted = sortByOrder(merged);
+          AsyncStorage.setItem(CACHE_KEY, JSON.stringify(sorted)).catch(() => {});
+          return sorted;
+        });
+      } catch (e) {
+        console.warn('Failed loading shopping lists:', e);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [auth.token, setLists]);
+
+  // Details branch
   if (selectedListId !== null && currentList) {
-    const doneCount = currentList.items.filter((i) => i.checked).length;
-
     return (
-      <SafeAreaView style={[styles.screen, { paddingTop: safeTop + 8 }]} edges={['top', 'left', 'right']}>
-        <View style={styles.headerRow}>
-          <Button variant="outline" onPress={() => setSelectedListId(null)}>
-            <ArrowRight size={18} style={styles.ml2} />
-            <Text>חזור לרשימות</Text>
-          </Button>
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            {!isEditingListName ? (
-              <View style={styles.titleRow}>
-                <Text style={styles.title}>{currentList.name}</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setEditedListName(currentList.name);
-                    setIsEditingListName(true);
-                  }}
-                  accessibilityRole="button"
-                  style={{ marginLeft: 8 }}
-                >
-                  <Edit2 size={18} />
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.renameRow}>
-                <TextInput
-                  value={editedListName}
-                  onChangeText={setEditedListName}
-                  placeholder="שם הרשימה"
-                  style={[styles.input, { flex: 1 }]}
-                  textAlign="right"
-                  autoFocus
-                  onSubmitEditing={() => {
-                    renameList(currentList.id, editedListName);
-                    setIsEditingListName(false);
-                    setEditedListName('');
-                  }}
-                />
-                <Button
-                  onPress={() => {
-                    renameList(currentList.id, editedListName);
-                    setIsEditingListName(false);
-                    setEditedListName('');
-                  }}
-                  style={{ marginLeft: 8 }}
-                >
-                  <Text>שמור</Text>
-                </Button>
-                <Button
-                  variant="outline"
-                  onPress={() => {
-                    setIsEditingListName(false);
-                    setEditedListName('');
-                  }}
-                >
-                  <Text>ביטול</Text>
-                </Button>
-              </View>
-            )}
-
-            <Text style={styles.sharedNote}>
-              {doneCount} / {currentList.items.length}
-            </Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          {/* הוספת פריט */}
-          <View style={styles.row}>
-            <Button
-              onPress={() => {
-                addItem(currentList.id, newItemName);
-                setNewItemName('');
-              }}
-              style={{ marginLeft: 8 }}
-            >
-              <Plus size={16} />
-            </Button>
-            <TextInput
-              value={newItemName}
-              onChangeText={setNewItemName}
-              placeholder="הוסף פריט חדש..."
-              style={[styles.input, { flex: 1 }]}
-              textAlign="right"
-              onSubmitEditing={() => {
-                addItem(currentList.id, newItemName);
-                setNewItemName('');
-              }}
-            />
-          </View>
-
-          <ScrollView contentContainerStyle={{ paddingBottom: 12 }}>
-            {currentList.items.length === 0 ? (
-              <Text style={styles.empty}>
-                רשימת הקניות ריקה. הוסף פריטים כדי להתחיל!
-              </Text>
-            ) : (
-              currentList.items.map((item, idx) => (
-                <View
-                  key={item.id}
-                  style={[styles.itemRow, idx > 0 && { marginTop: 8 }]}
-                >
-                  <TouchableOpacity
-                    onPress={() => deleteItem(currentList.id, item.id)}
-                    accessibilityRole="button"
-                    style={styles.iconBtn}
-                  >
-                    <Trash2 size={16} color="#ef4444" />
-                  </TouchableOpacity>
-
-                  <Text
-                    style={[
-                      styles.itemText,
-                      item.checked ? styles.itemChecked : undefined,
-                    ]}
-                  >
-                    {item.name}
-                  </Text>
-
-                  <TouchableOpacity
-                    onPress={() => toggleItem(currentList.id, item.id)}
-                    accessibilityRole="button"
-                    style={[
-                      styles.checkbox,
-                      item.checked
-                        ? styles.checkboxOn
-                        : styles.checkboxOff,
-                    ]}
-                  >
-                    {item.checked ? <Check size={16} /> : null}
-                  </TouchableOpacity>
-                </View>
-              ))
-            )}
-          </ScrollView>
-
-          {currentList.items.some((i) => i.checked) && (
-            <Button
-              variant="outline"
-              onPress={() => clearCompleted(currentList.id)}
-            >
-              <Check size={16} style={styles.ml2} />
-              <Text>נקה פריטים שסומנו</Text>
-            </Button>
-          )}
-        </View>
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+        <ShoppingListDetailsScreen
+          safeTop={safeTop}
+          list={currentList}
+          onBack={() => setSelectedListId(null)}
+          onRename={async (name) => {
+            renameList(currentList.id, name); // לוקאלי מידי
+            if (auth.token) {
+              try {
+                await shoppingService.saveList(auth.token, { ...currentList, name });
+              } catch (e) {
+                console.warn('שמירת שם רשימה נכשלה:', e);
+              }
+            }
+          }}
+          onAddItem={(name) => addItem(currentList.id, name)}
+          onToggleItem={(itemId) => toggleItem(currentList.id, itemId)}
+          onDeleteItem={(itemId) => deleteItem(currentList.id, itemId)}
+          onClearCompleted={() => clearCompleted(currentList.id)}
+        />
       </SafeAreaView>
     );
   }
 
-  // מסך כל הרשימות
+  // Lists branch
   return (
-    <SafeAreaView style={[styles.screen, { paddingTop: safeTop + 8 }]} edges={['top', 'left', 'right']}>
-      <View style={styles.headerRow}>
-        <Button variant="outline" onPress={onBack}>
-          <ArrowRight size={18} style={styles.ml2} />
-          <Text>חזור</Text>
-        </Button>
-
-        <View style={styles.row}>
-          <Button
-            onPress={() => {
-              addList(newListName);
-              setNewListName('');
-            }}
-            style={{ marginLeft: 8 }}
-          >
-            <Plus size={16} style={styles.ml2} />
-            <Text>רשימה חדשה</Text>
-          </Button>
-
-          <TextInput
-            placeholder="לדוגמה: קניות שבועיות"
-            value={newListName}
-            onChangeText={setNewListName}
-            style={[styles.input, { width: 200 }]}
-            textAlign="right"
-            onSubmitEditing={() => {
-              addList(newListName);
-              setNewListName('');
-            }}
-          />
-        </View>
-      </View>
-
-      {lists.length === 0 ? (
-        <View style={styles.card}>
-          <View style={[styles.center, { paddingVertical: 32 }]}>
-            <ShoppingBasket size={48} color="#9CA3AF" />
-            <Text style={{ color: '#6B7280', marginTop: 8 }}>
-              עדיין אין רשימות קניות. צור את הרשימה הראשונה שלך!
-            </Text>
-          </View>
-        </View>
-      ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: 12 }}>
-          {lists.map((list, idx) => (
-            <TouchableOpacity
-              key={list.id}
-              activeOpacity={0.8}
-              onPress={() => setSelectedListId(list.id)}
-              style={[styles.card, idx > 0 && { marginTop: 12 }]}
-            >
-              <View style={styles.cardHeader}>
-                <View style={styles.titleRow}>
-                  <ShoppingBasket size={20} />
-                  <Text
-                    style={[styles.title, { marginRight: 8 }]}
-                  >
-                    {list.name}
-                  </Text>
-                </View>
-                <Text style={styles.subtitle}>
-                  {list.items.length === 0
-                    ? 'רשימה ריקה'
-                    : `${list.items.length} פריטים • ${
-                        list.items.filter((i) => i.checked).length
-                      } הושלמו`}
-                </Text>
-              </View>
-
-              {list.items.length > 0 && (
-                <View style={{ marginTop: 8 }}>
-                  {list.items.slice(0, 3).map((item, iidx) => (
-                    <Text
-                      key={item.id}
-                      style={[
-                        styles.itemText,
-                        { textAlign: 'right' },
-                        item.checked ? styles.itemChecked : undefined,
-                        iidx > 0 && { marginTop: 4 },
-                      ]}
-                    >
-                      • {item.name}
-                    </Text>
-                  ))}
-                  {list.items.length > 3 && (
-                    <Text
-                      style={{
-                        color: '#9CA3AF',
-                        fontSize: 12,
-                        textAlign: 'right',
-                        marginTop: 4,
-                      }}
-                    >
-                      ועוד {list.items.length - 3} פריטים...
-                    </Text>
-                  )}
-                </View>
-              )}
-
-              <View style={[styles.row, { marginTop: 12 }]}>
-                <Button
-                  variant="outline"
-                  onPress={() => setSelectedListId(list.id)}
-                  style={{ flex: 1 }}
-                >
-                  <Edit2 size={16} style={styles.ml2} />
-                  <Text>פתח</Text>
-                </Button>
-                <Button
-                  variant="outline"
-                  onPress={() => deleteList(list.id)}
-                  style={{ marginRight: 8 }}
-                >
-                  <Trash2 size={16} color="#ef4444" />
-                </Button>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
+    <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+      <ShoppingListsScreen
+        safeTop={safeTop}
+        lists={lists}                // already sorted by order
+        onBack={onBack}
+        onCreateList={handleCreateList}
+        onOpenList={(id) => setSelectedListId(id)}
+        onDeleteList={handleDeleteList}   // <<< עכשיו מוחק בענן בלי לשנות order
+        onReorder={handleReorder}         // שמירת סדר בענן כשגוררים
+      />
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 16,
-  },
-  headerRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  row: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-  },
-  center: { alignItems: 'center', justifyContent: 'center' },
-
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  cardHeader: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  titleRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-  },
-  title: { fontSize: 18, fontWeight: '700', color: '#111827' },
-  subtitle: { fontSize: 12, color: '#6B7280' },
-
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderColor: '#E5E7EB',
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    minWidth: 120,
-  },
-
-  divider: {
-    height: 1,
-    backgroundColor: '#E5E7EB',
-    marginVertical: 12,
-  },
-
-  itemRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    padding: 8,
-    borderRadius: 10,
-  },
-  itemText: { flex: 1, fontSize: 16, color: '#111827' },
-  itemChecked: { textDecorationLine: 'line-through', color: '#9CA3AF' },
-
-  iconBtn: { padding: 6, borderRadius: 8 },
-
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxOn: {
-    backgroundColor: '#DCFCE7',
-    borderWidth: 1,
-    borderColor: '#16A34A',
-  },
-  checkboxOff: {
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-  },
-
-  ml2: { marginLeft: 8 },
-
-  renameRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  sharedNote: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  empty: {
-    textAlign: 'center',
-    color: '#6B7280',
-    paddingVertical: 16,
-  },
-});
