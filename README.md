@@ -1,13 +1,11 @@
 ## 🧭 C4 Architecture Overview
 
 ### Level 1: System Context
-![System Context](docs/architecture/c4-context.svg)
+![System Context](diagrams/C1.png)
 
 ### Level 2: Container
-![Container Diagram](docs/architecture/c4-container.svg)
+![Container Diagram](diagrams/C2.png)
 
 ### Level 3: Component
-![Component Diagram](docs/architecture/c4-component.svg)
+![Component Diagram](diagrams/C3.png)
 
-### Level 4: Code
-![Code Diagram](docs/architecture/c4-code.svg)
