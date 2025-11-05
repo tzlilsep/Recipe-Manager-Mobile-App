@@ -1,4 +1,4 @@
-## 🧭 C4 Architecture Overview
+## C4 Architecture Overview
 
 ### Level 1: System Context
 ![System Context](diagrams/C1.png)
