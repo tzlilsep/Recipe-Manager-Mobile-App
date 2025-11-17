@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   default: {
-    backgroundColor: '#6366F1',
+    backgroundColor: '#e2857bff',
   },
   outline: {
     borderWidth: 1,

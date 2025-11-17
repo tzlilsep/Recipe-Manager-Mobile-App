@@ -10,67 +10,49 @@ import {
 } from 'react-native';
 
 type Props = {
-  isRegister: boolean;
   username: string;
   password: string;
-  confirmPassword: string;
   loading: boolean;
   onChangeUsername: (v: string) => void;
   onChangePassword: (v: string) => void;
-  onChangeConfirmPassword: (v: string) => void;
   onSubmit: () => void;
-  onToggleMode: () => void;
 };
 
 export default function LoginForm({
-  isRegister,
   username,
   password,
-  confirmPassword,
   loading,
   onChangeUsername,
   onChangePassword,
-  onChangeConfirmPassword,
   onSubmit,
-  onToggleMode,
 }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.logo}>TS</Text>
-        <Text style={styles.welcome}>Welcome</Text>
+        <Text style={styles.welcome}>ברוכים הבאים</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.title}>{isRegister ? 'Register' : 'Login'}</Text>
-        <Text style={styles.description}>
-          {isRegister ? 'Create a new account' : 'Sign in to your account'}
-        </Text>
+        <Text style={styles.title}>כניסה</Text>
+        <Text style={styles.description}>לקבלת חשבון - צרו קשר</Text>
 
         <View style={styles.form}>
           <TextInput
             style={styles.input}
-            placeholder="Username"
+            placeholder="שם משתמש"
             value={username}
             onChangeText={onChangeUsername}
             autoCapitalize="none"
           />
           <TextInput
             style={styles.input}
-            placeholder="Password"
+            placeholder="סיסמה"
             value={password}
             onChangeText={onChangePassword}
             secureTextEntry
           />
-          {isRegister && (
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm Password"
-              value={confirmPassword}
-              onChangeText={onChangeConfirmPassword}
-              secureTextEntry
-            />
-          )}
+
           <TouchableOpacity
             style={[styles.button, loading && { opacity: 0.6 }]}
             onPress={onSubmit}
@@ -79,18 +61,8 @@ export default function LoginForm({
             {loading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={styles.buttonText}>
-                {isRegister ? 'Register' : 'Login'}
-              </Text>
+              <Text style={styles.buttonText}>כניסה</Text>
             )}
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={onToggleMode}>
-            <Text style={styles.switchText}>
-              {isRegister
-                ? 'Already have an account? Sign in'
-                : "Don't have an account? Register"}
-            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -99,10 +71,10 @@ export default function LoginForm({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 16, backgroundColor: '#EEF2FF' },
+  container: { flex: 1, justifyContent: 'center', padding: 16, backgroundColor: '#ecd7c2ff' },
   header: { alignItems: 'center', marginBottom: 24 },
-  logo: { fontSize: 48, fontWeight: '800', color: '#4F46E5' },
-  welcome: { fontSize: 18, color: '#6B7280' },
+  logo: { fontSize: 48, fontWeight: '800', color: '#ffffffff' },
+  welcome: { fontSize: 18, color: '#ffffffff' },
   card: {
     backgroundColor: 'white',
     borderRadius: 16,
@@ -120,12 +92,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   button: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#e2857bff',
     borderRadius: 10,
     padding: 14,
     alignItems: 'center',
     marginTop: 8,
   },
   buttonText: { color: 'white', fontWeight: '700' },
-  switchText: { color: '#2563EB', marginTop: 10, textAlign: 'center' },
 });

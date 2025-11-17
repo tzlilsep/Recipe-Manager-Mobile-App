@@ -14,12 +14,5 @@ namespace TS.Api.Features.Auth.Contracts
         public string? Error { get; init; } // null on success; reserved for future use if needed
     }
 
-    /// <summary>
-    /// Minimal user payload matching the client expectations.
-    /// </summary>
-    public sealed class UserDto
-    {
-        public string UserId { get; init; } = string.Empty;
-        public string UserName { get; init; } = string.Empty;
-    }
+
 }

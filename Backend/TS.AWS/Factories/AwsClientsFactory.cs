@@ -18,6 +18,7 @@ namespace TS.AWS.Factories
             creds.AddLogin(AwsAuthConfig.LoginProvider, idToken);
             return new AmazonDynamoDBClient(creds, region);
         }
+        
 
         // <<< חדש: קליינט Cognito IDP עם אותן הרשאות (Identity Pool + IdToken)
         public static IAmazonCognitoIdentityProvider CreateCognitoIdpFromIdToken(string idToken)

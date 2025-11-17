@@ -8,10 +8,5 @@ namespace TS.Engine.Abstractions
         Task<(bool Ok, string? UserId, string? IdToken, string? Error)>
             SignInAsync(string username, string password);
 
-        // Not required by current API flow; kept for compatibility.
-        Task SignOutAsync();
-
-        // Not required by current API flow; kept for compatibility.
-        Task<string?> GetUserIdAsync();
     }
 }

@@ -1,23 +1,23 @@
 // app/home.tsx
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { HomeScreen } from '../src/features/home';
+import { useAuth } from '../src/features/auth/model/auth.context';
 
 export default function HomeRoute() {
-  const params = useLocalSearchParams<{ username?: string }>();
-  const username =
-    typeof params.username === 'string' && params.username.length > 0
-      ? params.username
-      : 'אורח';
+  const { signOut } = useAuth(); 
 
   return (
     <HomeScreen
-      username={username}
       onNavigate={(page) => {
-        if (page === 'recipes') router.push('/recipeBook');
-        if (page === 'shopping') router.push('/shoppingList');
-        // planty כרגע נעול, אין ניווט
+        // Handle navigation requests coming from the HomeScreen
+        if (page === 'recipes') router.push('/recipeBook');   
+        if (page === 'shopping') router.push('/shoppingList'); 
       }}
-      onLogout={() => router.replace('/login')}
+      onLogout={() => {
+        // Perform global logout and redirect to the login screen
+        signOut();
+        router.replace('/login');
+      }}
     />
   );
 }

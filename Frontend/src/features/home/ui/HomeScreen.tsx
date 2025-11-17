@@ -3,10 +3,16 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { HomeProps } from '../model/home.types';
-import { HomeHeader } from './HomeHeader';
-import { HomeGrid } from './HomeGrid';
+import { HomeHeader } from './components/HomeHeader';
+import { HomeGrid } from './components/HomeGrid';
+import { useAuth } from '../../auth/model/auth.context';
 
-export function HomeScreen({ username, onNavigate, onLogout }: HomeProps) {
+export function HomeScreen({ onNavigate, onLogout }: HomeProps) {
+  const { auth } = useAuth();
+
+  // Build username locally (display logic)
+  const username = (auth.userName ?? '').trim() || 'אורח';
+
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <View style={styles.container}>
@@ -20,7 +26,7 @@ export function HomeScreen({ username, onNavigate, onLogout }: HomeProps) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#ecd7c2ff',
   },
   container: {
     width: '100%',
@@ -28,6 +34,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingHorizontal: 16,
     paddingBottom: 16,
-    paddingTop: 8, 
+    paddingTop: 8,
   },
 });

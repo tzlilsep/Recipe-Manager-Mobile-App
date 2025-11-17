@@ -1,4 +1,6 @@
 // Frontend\src\features\shoppingList\api\shopping.service.ts
+// All comments are in English only.
+
 import {
   ShoppingListDto,
   ShoppingItemDto,
@@ -8,15 +10,43 @@ import {
   LoadListResponseDto,
   SaveListRequestDto,
   SaveListResponseDto,
-  // לשלב השיתוף:
   ShareListRequestDto,
   ShareListResponseDto,
-  // חדש: לעזיבה (לא מחיקה מלאה)
   LeaveListResponseDto,
 } from './shopping.api.types';
-import { ShoppingListData, ShoppingItem } from '../model/shopping.types';
+import { ShoppingListData, ShoppingItem } from '../model/domain/shopping.types';
 
-/** DTO <-> Model */
+/** Stable numeric id helper for string/UUID ids coming from the server. */
+function toStableNumericId(src: string): number {
+  const n = Number(src);
+  if (Number.isFinite(n)) return n;
+  let h = 0;
+  for (let i = 0; i < src.length; i++) {
+    h = ((h << 5) - h) + src.charCodeAt(i);
+    h |= 0; // force 32-bit
+  }
+  return Math.abs(h) + 1;
+}
+
+/** In-memory mapping between UI numeric ids and server canonical ids */
+const idToCanonical = new Map<number, string>();
+const canonicalToId = new Map<string, number>();
+
+function rememberIdMapping(canonicalId: string): number {
+  const existing = canonicalToId.get(canonicalId);
+  if (existing) return existing;
+  const numeric = toStableNumericId(canonicalId);
+  canonicalToId.set(canonicalId, numeric);
+  idToCanonical.set(numeric, canonicalId);
+  return numeric;
+}
+
+function canonicalOf(numericId: number): string {
+  // Prefer mapping (correct), fall back to stringified number (best effort)
+  return idToCanonical.get(numericId) ?? String(numericId);
+}
+
+/** DTO <-> Model: items */
 function toItem(i: ShoppingItemDto): ShoppingItem {
   return { id: Number(i.id), name: i.name, checked: i.checked };
 }
@@ -24,30 +54,45 @@ function toDtoItem(i: ShoppingItem): ShoppingItemDto {
   return { id: String(i.id), name: i.name, checked: i.checked };
 }
 
-function toList(dto: ShoppingListDto): ShoppingListData {
+/**
+ * Ensures server payload has consistent sharing fields.
+ * - sharedWith: always an array
+ * - isShared: always boolean
+ * - isOwner: always boolean
+ */
+function normalizeServerList(dto: ShoppingListDto): ShoppingListDto {
+  const sharedWithArray = Array.isArray(dto.sharedWith) ? dto.sharedWith : [];
+  const isShared =
+    typeof dto.isShared === 'boolean' ? dto.isShared : sharedWithArray.length > 0;
+  const isOwner =
+    typeof dto.isOwner === 'boolean' ? dto.isOwner : false;
+
   return {
-    id: Number(dto.listId),
+    ...dto,
+    sharedWith: sharedWithArray,
+    isShared,
+    isOwner,
+  };
+}
+
+/** DTO -> App model (and remember the mapping) */
+function toList(rawDto: ShoppingListDto): ShoppingListData {
+  const dto = normalizeServerList(rawDto);
+
+  const numericId = rememberIdMapping(dto.listId);
+
+  return {
+    id: numericId,
     name: dto.name,
     items: dto.items.map(toItem),
     order: dto.order,
+
+    // Sharing
     isShared: dto.isShared,
     sharedWith: dto.sharedWith,
-    // shareStatus לא ממופה כרגע לצד המודל (נשמור את ה-UI פשוט)
-    isOwner: (dto as any).isOwner, // ✅ חדש: מאפשר החלטה על Delete/Leave
+    shareStatus: dto.shareStatus,
+    isOwner: dto.isOwner,
   };
-}
-function toDtoList(list: ShoppingListData): ShoppingListDto {
-  return {
-    listId: String(list.id),
-    name: list.name,
-    items: list.items.map(toDtoItem),
-    order: list.order,
-    isShared: list.isShared,
-    sharedWith: list.sharedWith,
-    // לא משדרים shareStatus מהמודל
-    // מעבירים isOwner רק אם השרת מצפה לזה (לרוב לא נדרש ב-PUT)
-    ...(list as any).isOwner != null ? { isOwner: (list as any).isOwner } : {},
-  } as ShoppingListDto;
 }
 
 const API_BASE_URL = 'http://192.168.1.51:5005/api';
@@ -70,6 +115,7 @@ async function http<T>(
     const txt = await res.text().catch(() => '');
     throw new Error(txt || `HTTP ${res.status}`);
   }
+
   const contentLength = res.headers.get('content-length');
   if (res.status === 204 || contentLength === '0') {
     // @ts-expect-error – no body
@@ -79,21 +125,51 @@ async function http<T>(
 }
 
 export const shoppingService = {
+  /** GET lists: guarantees normalized sharing fields for every item, then dedupes by canonicalId */
   async getLists(token: string, take = 20): Promise<ShoppingListData[]> {
     const data = await http<GetListsResponseDto>(`/shopping/lists?take=${take}`, {
       method: 'GET',
       token,
     });
-    return data.lists.map(toList).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+    // De-duplicate by canonical listId
+    const byCanonical = new Map<string, ShoppingListDto>();
+    for (const dto of data.lists) {
+      const n = normalizeServerList(dto);
+      const prev = byCanonical.get(n.listId);
+      if (!prev) {
+        byCanonical.set(n.listId, n);
+      } else {
+        // prefer shared & with more items
+        const pick =
+          (n.isShared && !prev.isShared) ? n :
+          (n.items.length > prev.items.length) ? n :
+          prev;
+        byCanonical.set(n.listId, {
+          ...pick,
+          isShared: pick.isShared || prev.isShared,
+          sharedWith: (pick.sharedWith?.length ? pick.sharedWith : prev.sharedWith) ?? [],
+        });
+      }
+    }
+
+    return [...byCanonical.values()]
+      .map(toList)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   },
 
+  /** POST create list: server will return canonical id; we remember it */
   async createList(
     token: string,
     name: string,
     id: number = Date.now(),
     order?: number
   ): Promise<ShoppingListData> {
-    const body: CreateListRequestDto = { listId: String(id), name, ...(order != null ? { order } : {}) };
+    const body: CreateListRequestDto = {
+      listId: String(id), // temp id if backend requires; response provides canonical
+      name,
+      ...(order != null ? { order } : {}),
+    };
     const data = await http<CreateListResponseDto>('/shopping/lists', {
       method: 'POST',
       token,
@@ -103,33 +179,51 @@ export const shoppingService = {
     return toList(data.list);
   },
 
+  /** DELETE list (owner delete) — use canonical id */
   async deleteList(token: string, listId: number): Promise<void> {
-    await http<void>(`/shopping/lists/${listId}`, {
+    const canonical = encodeURIComponent(canonicalOf(listId));
+    await http<void>(`/shopping/lists/${canonical}`, {
       method: 'DELETE',
       token,
     });
   },
 
-  /** חדש: עזיבת רשימה משותפת (לא מוחק לכל הצדדים) */
+  /** POST leave list (non-owner leave) — use canonical id */
   async leaveList(token: string, listId: number): Promise<void> {
-    const data = await http<LeaveListResponseDto>(`/shopping/lists/${listId}/leave`, {
+    const canonical = encodeURIComponent(canonicalOf(listId));
+    const data = await http<LeaveListResponseDto>(`/shopping/lists/${canonical}/leave`, {
       method: 'POST',
       token,
     });
     if (!data.ok) throw new Error(data.error || 'Leave list failed');
   },
 
+  /** GET single list — use canonical id */
   async loadList(token: string, listId: number): Promise<ShoppingListData> {
-    const data = await http<LoadListResponseDto>(`/shopping/lists/${listId}`, {
+    const canonical = encodeURIComponent(canonicalOf(listId));
+    const data = await http<LoadListResponseDto>(`/shopping/lists/${canonical}`, {
       method: 'GET',
       token,
     });
     return toList(data);
   },
 
+  /** PUT save list — serialize with canonical id */
   async saveList(token: string, list: ShoppingListData): Promise<void> {
-    const req: SaveListRequestDto = { list: toDtoList(list) };
-    const data = await http<SaveListResponseDto>(`/shopping/lists/${list.id}`, {
+    const canonical = canonicalOf(list.id);
+    const req: SaveListRequestDto = {
+      list: {
+        listId: canonical,
+        name: list.name,
+        items: list.items.map(toDtoItem),
+        order: list.order,
+        isShared: !!list.isShared,
+        sharedWith: Array.isArray(list.sharedWith) ? list.sharedWith : [],
+        shareStatus: list.shareStatus,
+        isOwner: !!list.isOwner,
+      },
+    };
+    const data = await http<SaveListResponseDto>(`/shopping/lists/${encodeURIComponent(canonical)}`, {
       method: 'PUT',
       token,
       body: JSON.stringify(req),
@@ -137,19 +231,21 @@ export const shoppingService = {
     if (!data.ok) throw new Error(data.error || 'Save list failed');
   },
 
+  /** PUT many lists (fan out) */
   async saveMany(token: string, lists: ShoppingListData[]): Promise<void> {
     await Promise.all(lists.map(l => shoppingService.saveList(token, l)));
   },
 
-  /** 🔗 SHARE: POST /api/shopping/lists/{listId}/share */
+  /** POST share list — use canonical id */
   async shareList(
     token: string,
     listId: number,
     target: string,
-    requireAccept: boolean = false // לשמירה על פשטות: ברירת מחדל שיתוף מיידי
+    requireAccept: boolean = false
   ): Promise<ShoppingListData> {
+    const canonical = encodeURIComponent(canonicalOf(listId));
     const body: ShareListRequestDto = { target, requireAccept };
-    const data = await http<ShareListResponseDto>(`/shopping/lists/${listId}/share`, {
+    const data = await http<ShareListResponseDto>(`/shopping/lists/${canonical}/share`, {
       method: 'POST',
       token,
       body: JSON.stringify(body),

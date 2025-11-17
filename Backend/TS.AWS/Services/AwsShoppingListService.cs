@@ -10,7 +10,7 @@ using TS.AWS.Auth;                                    // <<< חדש
 
 namespace TS.AWS.Services;
 
-public sealed class AwsShoppingListService : IShoppingListService
+public sealed class AwsShoppingListService : IShoppingListDataSource
 {
     private readonly IAmazonDynamoDB _ddb;
         private readonly IAmazonCognitoIdentityProvider _cognito;   // <<< חדש

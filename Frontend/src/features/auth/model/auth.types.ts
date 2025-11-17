@@ -1,9 +1,6 @@
 // src/features/auth/model/auth.types.ts
 
-
-/**
- * Internal app-level types used for UI, hooks, and state.
- */
+//Internal app-level types used for UI, hooks, and state.
 export interface User {
   id: string;
   name: string;
@@ -17,10 +14,7 @@ export interface AuthResult {
   error?: string;
 }
 
-/**
- * Interface implemented by the REST adapter (auth.service).
- */
+//Interface implemented by the REST adapter 
 export interface IAuthService {
   login(username: string, password: string): Promise<AuthResult>;
-  register(username: string, password: string): Promise<AuthResult>;
 }

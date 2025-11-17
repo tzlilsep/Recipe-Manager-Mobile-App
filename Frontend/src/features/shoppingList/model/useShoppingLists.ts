@@ -1,6 +1,6 @@
 // Frontend\src\features\shoppingList\model\useShoppingLists.ts
 import { useState, useMemo, useEffect } from 'react';
-import { ShoppingListData } from './shopping.types';
+import { ShoppingListData } from './domain/shopping.types';
 
 type PersistFn = (lists: ShoppingListData[]) => void;
 type DeleteFn = (deletedId: number, remaining: ShoppingListData[]) => void;

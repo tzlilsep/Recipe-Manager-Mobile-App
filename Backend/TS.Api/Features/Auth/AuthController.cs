@@ -48,14 +48,6 @@ namespace TS.Api.Features.Auth
             return Ok(response);
         }
 
-        /// <summary>
-        /// Registration is not implemented in the engine abstraction yet.
-        /// Returning 501 keeps the contract explicit for the client.
-        /// </summary>
-        [HttpPost("register")]
-        public IActionResult Register([FromBody] RegisterRequestDto? _)
-        {
-            return StatusCode(StatusCodes.Status501NotImplemented, "Registration is not supported.");
-        }
+
     }
 }

@@ -13,19 +13,19 @@ namespace TS.Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // ✅ חשוב: לגרום לשרת להאזין גם למכשירים אחרים ברשת, לא רק ל-localhost
+            // השרת יקשיב על פורט 5005 מכל כתובת (גם ב־EC2)
             builder.WebHost.UseUrls("http://0.0.0.0:5005");
 
-            builder.Services.AddScoped<IShoppingListServiceFactory, AwsShoppingListServiceFactory>();
+            builder.Services.AddScoped<IShoppingListDataSourceFactory, AwsShoppingListServiceFactory>();
 
-            // Register MVC controllers
+            // Controllers (Web API)
             builder.Services.AddControllers();
 
-            // Swagger (OpenAPI) for testing and documentation — keep only for Dev
+            // Swagger (OpenAPI)
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
-            // ✅ CORS — allow frontend (React Native) requests
+            // CORS — מאפשר לכל פרונט (React Native) לגשת
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("Frontend", policy =>
@@ -34,61 +34,43 @@ namespace TS.Api
                           .AllowAnyMethod());
             });
 
-            // Dependency Injection setup
+            // Auth service (Cognito)
             builder.Services.AddScoped<IAuthService, AwsAuthService>();
 
-            // ✅ הוספת אימות JWT (Cognito)
+            // JWT Authentication מול Cognito
             builder.Services
-           .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-           .AddJwtBearer(options =>
-    {
-        // ה־User Pool שלך (כבר נכון)
-        var authority = "https://cognito-idp.eu-central-1.amazonaws.com/eu-central-1_dT2wx55fl";
+               .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+               .AddJwtBearer(options =>
+               {
+                   var authority = "https://cognito-idp.eu-central-1.amazonaws.com/eu-central-1_dT2wx55fl";
 
-        options.Authority = authority;
+                   options.Authority = authority;
 
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            // 👇 השורה החסרה שגורמת לשגיאת IDX10204 להיעלם
-            ValidIssuer = authority,
+                   options.TokenValidationParameters = new TokenValidationParameters
+                   {
+                       ValidateIssuer = true,
+                       ValidIssuer = authority,
+                       ValidateAudience = false
+                   };
 
-            // להשאיר פשוט כרגע
-            ValidateAudience = false
-            // אם תרצי לנעול ל-App Client מסוים:
-            // ValidateAudience = true,
-            // ValidAudience = "<app client id>"
-        };
-
-        // עוזר בדיבוג במקרה ויהיו עוד שגיאות
-        options.IncludeErrorDetails = true;
-    });
-
+                   options.IncludeErrorDetails = true;
+               });
 
             builder.Services.AddAuthorization();
 
-            // ❗ אם יש לך מימוש בפועל של IShoppingListServiceFactory – רשמי אותו כאן:
-            // builder.Services.AddScoped<IShoppingListServiceFactory, YourShoppingListServiceFactory>();
-
             var app = builder.Build();
 
-            // Swagger UI visible only in Development mode
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
+            // ✅ Swagger תמיד זמין (גם ב־EC2)
+            app.UseSwagger();
+            app.UseSwaggerUI();
 
-            // HTTPS redirect — אפשר להשאיר, אבל לא חובה לפיתוח
-            if (!app.Environment.IsDevelopment())
-            {
-                app.UseHttpsRedirection();
-            }
+            // ❌ מבטלים HTTPS Redirect בינתיים (עובדים עם HTTP על פורט 5005)
+            // אם תרצי בעתיד HTTPS ודומיין, נוסיף את זה מחדש.
 
-            // Enable CORS before routing
+            // CORS לפני Routing
             app.UseCors("Frontend");
 
-            // ✅ סדר ביניים נכון: קודם Authentication ואז Authorization
+            // Authentication ואז Authorization
             app.UseAuthentication();
             app.UseAuthorization();
 

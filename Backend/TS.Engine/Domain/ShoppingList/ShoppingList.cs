@@ -1,4 +1,5 @@
-﻿namespace TS.Engine.Domain.ShoppingList
+﻿// Backend\TS.Engine\Domain\ShoppingList\ShoppingList.cs
+namespace TS.Engine.Domain.ShoppingList
 {
     public sealed class ShoppingList
     {

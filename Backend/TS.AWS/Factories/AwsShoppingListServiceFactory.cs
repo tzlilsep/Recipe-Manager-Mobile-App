@@ -5,9 +5,9 @@ using TS.AWS.Services;
 
 namespace TS.AWS.Factories
 {
-    public sealed class AwsShoppingListServiceFactory : IShoppingListServiceFactory
+    public sealed class AwsShoppingListServiceFactory : IShoppingListDataSourceFactory
     {
-        public IShoppingListService Create(string idToken)
+        public IShoppingListDataSource Create(string idToken)
             => new AwsShoppingListService(idToken);
     }
 }
