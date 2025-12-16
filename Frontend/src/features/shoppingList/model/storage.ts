@@ -1,69 +1,65 @@
 // Frontend/src/features/shoppingList/model/storage.ts
 
-
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ShoppingListData } from './domain/shopping.types';
-import { sortByOrder } from './domain/listOrder';
 
-const CACHE_KEY = 'shopping/lists:v1'; // keep v1; we normalize legacy entries on read
-export const userCacheKey = (userId?: string | null) => `${CACHE_KEY}:${userId ?? 'anon'}`;
+const prefix = 'shopping/lists:v1:';
 
-/** Defensive normalization for legacy cached entries that may miss sharing fields. */
-function normalizeCachedList(anyList: any): ShoppingListData {
-  const sharedWith: string[] = Array.isArray(anyList?.sharedWith)
-    ? anyList.sharedWith.slice(0, 1).map(String)
-    : [];
+export type StoredItem = {
+  id: string;
+  name: string;
+  is_checked: boolean;
+  position: number;
+};
 
-  // Derive isShared if missing (0..1 partner by contract)
-  const isShared: boolean =
-    typeof anyList?.isShared === 'boolean' ? anyList.isShared : sharedWith.length > 0;
+export type StoredList = {
+  listId: string;
+  name: string;
+  orderForUser: number;
+  isOwner: boolean;
+  ownerUsername: string;
+  isShared: boolean;
+  items: StoredItem[];
+  sharedWith: string[];
+};
 
-  // If isOwner is missing (legacy cache), default to true.
-  // Rationale: legacy local lists were created by the current user.
-  // Remote fetch later will correct any mismatch.
-  const isOwner: boolean =
-    typeof anyList?.isOwner === 'boolean' ? anyList.isOwner : true;
-
+// normalize legacy records (adds missing fields)
+function normalize(list: any): StoredList {
   return {
-    id: Number(anyList?.id),
-    name: String(anyList?.name ?? ''),
-    items: Array.isArray(anyList?.items)
-      ? anyList.items.map((i: any) => ({
-          id: Number(i?.id),
-          name: String(i?.name ?? ''),
-          checked: !!i?.checked,
+    listId: String(list.listId ?? list.id ?? ''),
+    name: String(list.name ?? ''),
+    orderForUser: Number.isFinite(list.orderForUser) ? list.orderForUser : 0,
+    isOwner: !!list.isOwner,
+    ownerUsername: String(list.ownerUsername ?? ''),
+    isShared: !!list.isShared,
+    items: Array.isArray(list.items)
+      ? list.items.map((it: any) => ({
+          id: String(it.id ?? ''),
+          name: String(it.name ?? ''),
+          is_checked: !!it.is_checked,
+          position: Number.isFinite(it.position) ? it.position : 0,
         }))
       : [],
-    order: Number(anyList?.order ?? 0),
-
-    // Sharing
-    isShared,
-    sharedWith,
-    isOwner,
-    shareStatus: anyList?.shareStatus,
+    sharedWith: Array.isArray(list.sharedWith) ? list.sharedWith.map(String) : [],
   };
 }
 
-export async function readCache(userId?: string | null) {
-  const raw = await AsyncStorage.getItem(userCacheKey(userId));
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return null;
-
-    // Normalize each cached list so UI always has required fields.
-    const normalized: ShoppingListData[] = parsed.map(normalizeCachedList);
-    return sortByOrder(normalized);
-  } catch {
-    return null;
-  }
+function key(userId: string) {
+  return `${prefix}${userId}`;
 }
 
-export async function writeCache(userId: string | null | undefined, lists: ShoppingListData[]) {
-  try {
-    // Lists reaching here are already normalized by service/repo/controller.
-    await AsyncStorage.setItem(userCacheKey(userId), JSON.stringify(sortByOrder(lists as any)));
-  } catch {
-    // Swallow errors: cache write failure should not break the app.
-  }
+// Disabled - always load from server, no local caching
+export async function loadLists(userId: string | null): Promise<any[]> {
+  return [];
 }
+
+export async function saveLists(userId: string | null, lists: any[]): Promise<void> {
+  // No-op: don't save to local storage
+}
+
+export async function clearLists(userId: string | null): Promise<void> {
+  // No-op: nothing to clear
+}
+
+// Aliases for backward compatibility
+export const readCache = loadLists;
+export const writeCache = saveLists;

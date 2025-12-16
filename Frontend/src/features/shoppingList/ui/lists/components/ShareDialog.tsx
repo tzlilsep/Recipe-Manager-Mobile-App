@@ -33,7 +33,7 @@ export const ShareDialog = ({
         <View style={styles.modalCard}>
           <Text style={styles.modalTitle}>שיתוף רשימה</Text>
           <Text style={styles.modalSubtitle}>
-            ניתן לשתף עם משתמש אחד בלבד, ורק אם את/ה יצרת את הרשימה.
+            הכנס את שם המשתמש איתו תרצה לשתף את הרשימה
           </Text>
 
           <TextInput

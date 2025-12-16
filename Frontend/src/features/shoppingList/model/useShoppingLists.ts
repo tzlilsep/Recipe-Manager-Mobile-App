@@ -89,10 +89,12 @@ export function useShoppingLists(
   // --- פריטים ---
   const addItem = (listId: number, name: string) => {
     if (!name.trim()) return;
+    // Generate a simple unique ID (timestamp + random)
+    const uniqueId = Date.now() * 1000 + Math.floor(Math.random() * 1000);
     setLists(prev =>
       prev.map(l =>
         l.id === listId
-          ? { ...l, items: [...l.items, { id: Date.now(), name, checked: false }] }
+          ? { ...l, items: [...l.items, { id: uniqueId, name, checked: false }] }
           : l
       )
     );

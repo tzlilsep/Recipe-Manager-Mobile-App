@@ -36,7 +36,8 @@ const derivedIsShared =
   !!item.isShared || (Array.isArray(item.sharedWith) && item.sharedWith.length > 0);
 
 const isOwner = rawIsOwner;
-const canShare = isOwner && !derivedIsShared;
+// Owner can always share (no limit on number of partners)
+const canShare = isOwner;
 const deleteLabel = derivedIsShared && !isOwner ? 'הסר עבורי' : 'מחיקה';
 
   const subtitle =

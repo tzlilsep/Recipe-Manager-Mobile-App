@@ -5,12 +5,6 @@ frontend/.vscode
 frontend/dist
 frontend/build
 
-# .NET
-backend/bin
-backend/obj
-backend/.vs
-backend/Properties/launchSettings.json.user
-
 # מערכת כללית
 .DS_Store
 Thumbs.db

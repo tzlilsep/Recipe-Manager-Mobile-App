@@ -48,7 +48,7 @@ function canonicalOf(numericId: number): string {
 
 /** DTO <-> Model: items */
 function toItem(i: ShoppingItemDto): ShoppingItem {
-  return { id: Number(i.id), name: i.name, checked: i.checked };
+  return { id: toStableNumericId(i.id), name: i.name, checked: i.checked };
 }
 function toDtoItem(i: ShoppingItem): ShoppingItemDto {
   return { id: String(i.id), name: i.name, checked: i.checked };
@@ -85,13 +85,14 @@ function toList(rawDto: ShoppingListDto): ShoppingListData {
     id: numericId,
     name: dto.name,
     items: dto.items.map(toItem),
-    order: dto.order,
+    ...(dto.order != null ? { order: dto.order } : {}),
 
     // Sharing
     isShared: dto.isShared,
     sharedWith: dto.sharedWith,
     shareStatus: dto.shareStatus,
     isOwner: dto.isOwner,
+    ownerUsername: (dto as any).ownerUsername,
   };
 }
 
@@ -216,7 +217,7 @@ export const shoppingService = {
         listId: canonical,
         name: list.name,
         items: list.items.map(toDtoItem),
-        order: list.order,
+        order: list.order ?? 0,
         isShared: !!list.isShared,
         sharedWith: Array.isArray(list.sharedWith) ? list.sharedWith : [],
         shareStatus: list.shareStatus,

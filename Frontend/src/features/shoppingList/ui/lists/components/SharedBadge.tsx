@@ -13,11 +13,16 @@ export const SharedBadge = ({ item }: { item: ShoppingListData }) => {
 
   if (!derivedIsShared) return null;
 
-  // Server guarantees 0..1 partner, fallback just in case.
-  const partner =
-    Array.isArray(item.sharedWith) && item.sharedWith.length > 0
-      ? item.sharedWith[0]
-      : 'משתמש אחר';
+  // If owner: show all partner names from sharedWith
+  // If shared with you: show owner name
+  const isOwner = !!(item as any)?.isOwner;
+  const ownerUsername = (item as any)?.ownerUsername;
+  
+  const partner = isOwner
+    ? (Array.isArray(item.sharedWith) && item.sharedWith.length > 0
+        ? item.sharedWith.join(', ')  // Show all partners separated by comma
+        : 'משתמש אחר')
+    : (ownerUsername || 'הבעלים');
 
   return (
     <View style={[styles.sharedRow, { alignSelf: 'flex-end', flexDirection: 'row-reverse' }]}>

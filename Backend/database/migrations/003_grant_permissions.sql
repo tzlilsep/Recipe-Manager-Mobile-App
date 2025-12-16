@@ -1,0 +1,9 @@
+GRANT USAGE ON SCHEMA public TO "recipe-manager-app";
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON ALL TABLES IN SCHEMA public
+TO "recipe-manager-app";
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON TABLES TO "recipe-manager-app";

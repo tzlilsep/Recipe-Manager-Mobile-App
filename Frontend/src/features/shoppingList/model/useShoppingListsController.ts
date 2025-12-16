@@ -223,22 +223,52 @@ export function useShoppingListsController(initial: ShoppingListData[] = []) {
     if (!auth?.token) return Alert.alert('שיתוף רשימה', 'לא ניתן לשתף ללא התחברות.');
     if ((identifier || '').trim() === userId) return Alert.alert('שיתוף רשימה', 'אי אפשר לשתף רשימה עם עצמך.');
     try {
+      console.log('Before share - current lists:', lists.map(l => ({ id: l.id, name: l.name, isShared: l.isShared, sharedWith: l.sharedWith })));
+      
       const updated = await repo.share(id, identifier);
-      const next = sortByOrder(lists.map(l => (l.id === updated.id ? updated : l)));
-      setLists(next);
+      
+      console.log('Share result:', { 
+        originalId: id, 
+        updatedId: updated.id, 
+        updatedSharedWith: updated.sharedWith,
+        updatedIsShared: updated.isShared 
+      });
+      
+      // Mark as external update to prevent saving back to server
+      isApplyingExternalUpdateRef.current = true;
+      
+      // Force update by creating new array and new objects
+      const next = lists.map(l => {
+        if (l.id === updated.id) {
+          console.log('Found matching list, replacing with:', { id: updated.id, isShared: updated.isShared, sharedWith: updated.sharedWith });
+          return { ...updated };
+        }
+        return l;
+      });
+      
+      console.log('After map - next array:', next.map(l => ({ id: l.id, name: l.name, isShared: l.isShared, sharedWith: l.sharedWith })));
+      
+      const sorted = sortByOrder(next);
+      console.log('After sort:', sorted.map(l => ({ id: l.id, name: l.name, isShared: l.isShared, sharedWith: l.sharedWith })));
+      
+      setLists(sorted);
 
       if (userId) {
-        inMemoryListsByUser[userId] = next;
+        inMemoryListsByUser[userId] = sorted;
         // Persist cache explicitly as a guard (persist also happens via onPersist effect).
         try {
-          await writeCache(userId, next);
+          await writeCache(userId, sorted);
         } catch (e) {
           console.warn('writeCache after share failed', e);
         }
       }
 
+      // Reset the flag after state update
+      isApplyingExternalUpdateRef.current = false;
+
       Alert.alert('שיתוף רשימה', 'השיתוף בוצע בהצלחה.');
     } catch (e: any) {
+      isApplyingExternalUpdateRef.current = false;
       Alert.alert('שיתוף נכשל', (e?.message || '').trim() || 'שגיאה בעת שיתוף הרשימה');
     }
   };

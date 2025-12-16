@@ -11,7 +11,6 @@ export interface ShoppingListDto {
   name: string;
   items: ShoppingItemDto[];
   order: number;        
-  // --- Sharing ---
   isShared: boolean;          
   sharedWith: string[];        
   shareStatus?: ShareStatusDto;

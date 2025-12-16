@@ -76,8 +76,8 @@ export function ShoppingListsScreen({
     const l = lists.find(x => x.id === id);
     setShareForId(id);
     setShareIdentifier('');
-    const notAllowed = !l || l.isShared || !(l as any)?.isOwner;
-    setShareError(notAllowed ? 'לא ניתן לשתף: רק הבעלים ובתנאי שהרשימה לא משותפת.' : null);
+    const notAllowed = !l || !(l as any)?.isOwner;
+    setShareError(notAllowed ? 'לא ניתן לשתף: רק הבעלים יכול לשתף רשימה.' : null);
     setIsSharing(false);
   }, [lists]);
 
@@ -87,8 +87,8 @@ export function ShoppingListsScreen({
     if (!v) return;
 
     const list = lists.find(l => l.id === shareForId);
-    if (!list || list.isShared || !(list as any)?.isOwner) {
-      setShareError('לא ניתן לשתף: הרשימה כבר משותפת או שאינך הבעלים.');
+    if (!list || !(list as any)?.isOwner) {
+      setShareError('לא ניתן לשתף: רק הבעלים יכול לשתף רשימה.');
       return;
     }
 

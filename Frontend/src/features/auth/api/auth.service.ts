@@ -22,6 +22,14 @@ function mapAuthResponseDto(dto: LoginResponseDto): AuthResult {
 
 const API_BASE_URL = 'http://192.168.1.51:5005/api';
 
+async function handle(res: Response) {
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(text || 'Network error');
+  }
+  return res.json();
+}
+
 export const authService: IAuthService = {
   async login(username, password) {
     const body: LoginRequestDto = { username, password };
@@ -45,5 +53,23 @@ export const authService: IAuthService = {
       console.error('Network error:', err);
       return { ok: false, error: 'Network request failed. Check your API connection.' };
     }
+  },
+
+  async signIn(email: string, password: string) {
+    const res = await fetch(`${API_BASE_URL}/auth/signin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    return handle(res);
+  },
+
+  async signUp(email: string, password: string, name: string) {
+    const res = await fetch(`${API_BASE_URL}/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name }),
+    });
+    return handle(res);
   },
 };

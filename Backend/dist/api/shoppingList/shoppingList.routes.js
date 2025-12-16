@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.shoppingListRoutes = void 0;
+const express_1 = require("express");
+const shoppingList_controller_1 = require("./shoppingList.controller");
+const requireAuth_1 = require("../../aws/cognito/requestToken/requireAuth");
+const asyncHandler_1 = require("../_utils/asyncHandler");
+exports.shoppingListRoutes = (0, express_1.Router)();
+exports.shoppingListRoutes.use(requireAuth_1.requireAuth);
+exports.shoppingListRoutes.get("/shopping/lists", (0, asyncHandler_1.asyncHandler)(shoppingList_controller_1.shoppingListController.getLists));
+exports.shoppingListRoutes.post("/shopping/lists", (0, asyncHandler_1.asyncHandler)(shoppingList_controller_1.shoppingListController.createList));
+exports.shoppingListRoutes.get("/shopping/lists/:listId", (0, asyncHandler_1.asyncHandler)(shoppingList_controller_1.shoppingListController.loadList));
+exports.shoppingListRoutes.put("/shopping/lists/:listId", (0, asyncHandler_1.asyncHandler)(shoppingList_controller_1.shoppingListController.saveList));
+exports.shoppingListRoutes.delete("/shopping/lists/:listId", (0, asyncHandler_1.asyncHandler)(shoppingList_controller_1.shoppingListController.deleteList));
+exports.shoppingListRoutes.post("/shopping/lists/:listId/share", (0, asyncHandler_1.asyncHandler)(shoppingList_controller_1.shoppingListController.shareList));
+exports.shoppingListRoutes.post("/shopping/lists/:listId/leave", (0, asyncHandler_1.asyncHandler)(shoppingList_controller_1.shoppingListController.leaveList));

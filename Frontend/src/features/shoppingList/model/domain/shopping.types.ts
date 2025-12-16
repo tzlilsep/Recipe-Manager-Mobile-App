@@ -8,17 +8,16 @@ export interface ShoppingItem {
   checked: boolean;
 }
 
-export interface ShoppingListData {
+export type ShoppingListData = {
   id: number;
   name: string;
   items: ShoppingItem[];
-  order: number;
+  order?: number;
 
+  // Sharing
   isShared?: boolean;
-  sharedWith?: string[]; // מזהה / ID מהענן
-
-  shareStatus?: ShareStatus;
+  sharedWith?: string[];
+  shareStatus?: 'pending' | 'active';
   isOwner?: boolean;
-
-  sharedWithName?: string; 
-}
+  ownerUsername?: string;
+};

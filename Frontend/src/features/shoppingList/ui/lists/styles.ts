@@ -67,7 +67,6 @@ export const styles = StyleSheet.create({
   },
   menuText: { fontSize: 14, color: '#111827' },
 
-  /** תג שיתוף פשוט – יושב מתחת לכותרת */
   sharedRow: {
     alignSelf: 'flex-start',
     flexDirection: 'row-reverse',
