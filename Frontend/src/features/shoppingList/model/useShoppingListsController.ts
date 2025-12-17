@@ -31,7 +31,7 @@ export function useShoppingListsController(initial: ShoppingListData[] = []) {
     lists, setLists,
     selectedListId, setSelectedListId,
     currentList, addList, renameList,
-    addItem, deleteItem, toggleItem, clearCompleted,
+    addItem, deleteItem, toggleItem, clearCompleted, reorderItems,
   } = useShoppingLists(initialSnapshot, async (l) => {
     // Always persist cache for the current user.
     await writeCache(userId, l);
@@ -299,5 +299,6 @@ export function useShoppingListsController(initial: ShoppingListData[] = []) {
     toggleItem: (itemId: number) => currentList && toggleItem(currentList.id, itemId),
     deleteItem: (itemId: number) => currentList && deleteItem(currentList.id, itemId),
     clearCompleted: () => currentList && clearCompleted(currentList.id),
+    reorderItems: (newOrder: any[]) => currentList && reorderItems(currentList.id, newOrder),
   };
 }

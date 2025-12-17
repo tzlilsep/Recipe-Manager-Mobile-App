@@ -20,6 +20,7 @@ type Props = {
   onAddItem: (name: string) => void;
   onToggleItem: (itemId: number) => void;
   onDeleteItem: (itemId: number) => void;
+  onReorderItems: (newOrder: any[]) => void;
   onClearCompleted: () => void;
 };
 
@@ -30,6 +31,7 @@ export function ShoppingListDetailsScreen({
   onAddItem,
   onToggleItem,
   onDeleteItem,
+  onReorderItems,
   onClearCompleted,
 }: Props) {
   // נשאיר את הפעולה שלך כפי שהיא (על אף שמוטציה במקום אינה אידאלית)
@@ -58,15 +60,17 @@ export function ShoppingListDetailsScreen({
 
         <NewItemRow onSubmit={onAddItem} />
 
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-          <ItemsList items={list.items} onToggle={onToggleItem} onDelete={onDeleteItem} />
+        <View style={{ flex: 1 }}>
+          <ItemsList items={list.items} onToggle={onToggleItem} onDelete={onDeleteItem} onReorder={onReorderItems} />
+        </View>
 
+        {hasCompleted(list) && (
           <CompletedActions
             visible={hasCompleted(list)}
             onMoveCompletedToEnd={() => onMoveCompletedToEnd(list)}
             onClearCompleted={onClearCompleted}
           />
-        </ScrollView>
+        )}
       </View>
     </View>
   );

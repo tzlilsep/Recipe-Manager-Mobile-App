@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { clamp, parseTimeMinutes } from './utils';
-import { initialMyRecipes, initialOthersRecipes } from './mockData';
 import { Meal, Recipe } from './types';
 import * as recipeApi from '../api/recipe.service';
 
@@ -27,9 +26,9 @@ const defaultFilters: RecipeFiltersState = {
 export function useRecipeBook() {
   const [activeTab, setActiveTab] = useState<RecipeBookTab>('my');
 
-  // State with initial mock data as fallback
-  const [myRecipes, setMyRecipes] = useState<Recipe[]>(initialMyRecipes);
-  const [othersRecipes, setOthersRecipes] = useState<Recipe[]>(initialOthersRecipes);
+  // State - only DB data, no mock data
+  const [myRecipes, setMyRecipes] = useState<Recipe[]>([]);
+  const [othersRecipes, setOthersRecipes] = useState<Recipe[]>([]);
 
   // Load recipes from API on mount
   useEffect(() => {
@@ -40,23 +39,23 @@ export function useRecipeBook() {
           recipeApi.fetchOthersRecipes(),
         ]);
         
-        // Only update if API call was successful and returned data
-        if (myResult.ok && myResult.recipes.length > 0) {
+        // Update state with DB data
+        if (myResult.ok) {
           setMyRecipes(myResult.recipes);
         }
-        if (othersResult.ok && othersResult.recipes.length > 0) {
+        if (othersResult.ok) {
           setOthersRecipes(othersResult.recipes);
         }
       } catch (error) {
-        console.warn('Failed to load recipes from API, using mock data', error);
-        // Keep using the initial mock data as fallback
+        console.warn('Failed to load recipes from API', error);
+        // Leave empty arrays on error
       }
     };
 
     loadRecipes();
   }, []);
 
-  const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null);
+  const [selectedRecipeId, setSelectedRecipeId] = useState<number | string | null>(null);
   const selectedRecipe = useMemo(() => {
     const all = [...myRecipes, ...othersRecipes];
     return all.find(r => r.id === selectedRecipeId) ?? null;
@@ -84,7 +83,7 @@ export function useRecipeBook() {
     loadMeals();
   }, []);
 
-  const openRecipe = (id: number) => setSelectedRecipeId(id);
+  const openRecipe = (id: number | string) => setSelectedRecipeId(id);
   const closeRecipe = () => setSelectedRecipeId(null);
 
   const startAddRecipe = () => {
@@ -94,7 +93,12 @@ export function useRecipeBook() {
 
   const startEditRecipe = (recipe: Recipe) => {
     setEditingRecipe(recipe);
+    setSelectedRecipeId(null); // Close details screen before opening edit
     setActiveTab('addEdit');
+  };
+
+  const clearEditingRecipe = () => {
+    setEditingRecipe(null);
   };
 
   const addMyRecipe = async (recipe: Recipe) => {
@@ -113,13 +117,9 @@ export function useRecipeBook() {
 
       if (result.ok && result.recipe) {
         setMyRecipes(prev => [result.recipe!, ...prev]);
-      } else {
-        // Fallback to local state if API fails
-        setMyRecipes(prev => [recipe, ...prev]);
       }
     } catch (error) {
-      console.warn('Failed to create recipe on server, adding locally', error);
-      setMyRecipes(prev => [recipe, ...prev]);
+      console.warn('Failed to create recipe on server', error);
     }
   };
 
@@ -140,13 +140,9 @@ export function useRecipeBook() {
 
       if (result.ok && result.recipe) {
         setMyRecipes(prev => prev.map(r => (r.id === result.recipe!.id ? result.recipe! : r)));
-      } else {
-        // Fallback to local state if API fails
-        setMyRecipes(prev => prev.map(r => (r.id === recipe.id ? recipe : r)));
       }
     } catch (error) {
-      console.warn('Failed to update recipe on server, updating locally', error);
-      setMyRecipes(prev => prev.map(r => (r.id === recipe.id ? recipe : r)));
+      console.warn('Failed to update recipe on server', error);
     }
   };
 
@@ -156,43 +152,21 @@ export function useRecipeBook() {
 
       if (result.ok && result.recipe) {
         setMyRecipes(prev => [result.recipe!, ...prev]);
-      } else {
-        // Fallback to local copy if API fails
-        const copied: Recipe = {
-          ...recipe,
-          id: Date.now(),
-          author: undefined,
-          copiedFrom: recipe.author,
-          saveCount: undefined,
-        };
-        setMyRecipes(prev => [copied, ...prev]);
       }
     } catch (error) {
-      console.warn('Failed to copy recipe on server, copying locally', error);
-      const copied: Recipe = {
-        ...recipe,
-        id: Date.now(),
-        author: undefined,
-        copiedFrom: recipe.author,
-        saveCount: undefined,
-      };
-      setMyRecipes(prev => [copied, ...prev]);
+      console.warn('Failed to copy recipe on server', error);
     }
   };
 
-  const deleteMyRecipe = async (id: number) => {
+  const deleteMyRecipe = async (id: number | string) => {
     try {
       const result = await recipeApi.deleteRecipe(id);
 
       if (result.ok) {
         setMyRecipes(prev => prev.filter(r => r.id !== id));
-      } else {
-        // Fallback to local delete if API fails
-        setMyRecipes(prev => prev.filter(r => r.id !== id));
       }
     } catch (error) {
-      console.warn('Failed to delete recipe on server, deleting locally', error);
-      setMyRecipes(prev => prev.filter(r => r.id !== id));
+      console.warn('Failed to delete recipe on server', error);
     }
     
     if (selectedRecipeId === id) setSelectedRecipeId(null);
@@ -277,7 +251,7 @@ export function useRecipeBook() {
     }
   };
 
-  const addRecipeToMeal = async (mealId: number, recipeId: number) => {
+  const addRecipeToMeal = async (mealId: number, recipeId: number | string) => {
     try {
       const result = await recipeApi.addRecipeToMeal({ mealId, recipeId });
 
@@ -305,7 +279,7 @@ export function useRecipeBook() {
     }
   };
 
-  const removeRecipeFromMeal = async (mealId: number, recipeId: number) => {
+  const removeRecipeFromMeal = async (mealId: number, recipeId: number | string) => {
     try {
       const result = await recipeApi.removeRecipeFromMeal(mealId, recipeId);
 
@@ -359,6 +333,7 @@ export function useRecipeBook() {
 
     startAddRecipe,
     startEditRecipe,
+    clearEditingRecipe,
 
     addMyRecipe,
     updateMyRecipe,

@@ -11,7 +11,7 @@ export class RecipeController {
   // GET /api/recipes - Get all recipes for the authenticated user
   getUserRecipes = async (req: Request, res: Response) => {
     try {
-      const userId = (req as any).userId;
+      const userId = (req as any).user?.userId;
       
       if (!userId) {
         return res.status(401).json({ ok: false, error: 'UNAUTHORIZED' });
@@ -30,7 +30,7 @@ export class RecipeController {
   // GET /api/recipes/:recipeId - Get a single recipe by ID
   getRecipeById = async (req: Request, res: Response) => {
     try {
-      const userId = (req as any).userId;
+      const userId = (req as any).user?.userId;
       const { recipeId } = req.params;
 
       if (!userId) {
@@ -53,7 +53,7 @@ export class RecipeController {
   // POST /api/recipes - Create a new recipe
   createRecipe = async (req: Request, res: Response) => {
     try {
-      const userId = (req as any).userId;
+      const userId = (req as any).user?.userId;
       const body = req.body as CreateRecipeRequest;
 
       if (!userId) {
@@ -72,7 +72,7 @@ export class RecipeController {
   // PUT /api/recipes/:recipeId - Update a recipe
   updateRecipe = async (req: Request, res: Response) => {
     try {
-      const userId = (req as any).userId;
+      const userId = (req as any).user?.userId;
       const { recipeId } = req.params;
       const body = req.body as UpdateRecipeRequest;
 
@@ -96,7 +96,7 @@ export class RecipeController {
   // DELETE /api/recipes/:recipeId - Delete a recipe
   deleteRecipe = async (req: Request, res: Response) => {
     try {
-      const userId = (req as any).userId;
+      const userId = (req as any).user?.userId;
       const { recipeId } = req.params;
 
       if (!userId) {
@@ -119,7 +119,7 @@ export class RecipeController {
   // POST /api/recipes/:recipeId/save - Save (favorite) a recipe
   saveRecipe = async (req: Request, res: Response) => {
     try {
-      const userId = (req as any).userId;
+      const userId = (req as any).user?.userId;
       const { recipeId } = req.params;
 
       if (!userId) {
@@ -138,7 +138,7 @@ export class RecipeController {
   // DELETE /api/recipes/:recipeId/save - Unsave (unfavorite) a recipe
   unsaveRecipe = async (req: Request, res: Response) => {
     try {
-      const userId = (req as any).userId;
+      const userId = (req as any).user?.userId;
       const { recipeId } = req.params;
 
       if (!userId) {
@@ -154,6 +154,17 @@ export class RecipeController {
       res.json({ ok: true });
     } catch (err) {
       console.error('unsaveRecipe error:', err);
+      res.status(500).json({ ok: false, error: 'INTERNAL_ERROR' });
+    }
+  };
+
+  // GET /api/recipes/tags - Get all available recipe tags
+  getTags = async (_req: Request, res: Response) => {
+    try {
+      const tags = await this.recipeService.getAvailableTags();
+      res.json({ ok: true, tags });
+    } catch (err) {
+      console.error('getTags error:', err);
       res.status(500).json({ ok: false, error: 'INTERNAL_ERROR' });
     }
   };

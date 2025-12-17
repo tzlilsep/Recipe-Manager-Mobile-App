@@ -1,7 +1,7 @@
 // English comments only.
 // API service for Recipe Book - handles REST calls to backend
 
-import { Recipe, Meal } from '../model/types';
+import { Recipe, Meal, Ingredient, InstructionItem } from '../model/types';
 import {
   GetRecipesResponse,
   GetRecipeByIdResponse,
@@ -16,6 +16,114 @@ import {
   AddRecipeToMealRequest,
   AddRecipeToMealResponse,
 } from './recipe.api.types';
+
+// Helper to parse time string like "15 דקות" to minutes
+function parseTimeToMinutes(timeStr?: string): number | undefined {
+  if (!timeStr) return undefined;
+  const match = timeStr.match(/(\d+)/);
+  return match ? parseInt(match[1], 10) : undefined;
+}
+
+// Helper to convert frontend Recipe format to backend CreateRecipeRequest
+function mapRecipeToCreateRequest(recipe: Partial<Recipe>): any {
+  const ingredientRows: any[] = [];
+  let position = 0;
+
+  // Group ingredients by groupTitle
+  const grouped = new Map<string | undefined, Ingredient[]>();
+  recipe.ingredients?.forEach(ing => {
+    const group = ing.groupTitle || undefined;
+    if (!grouped.has(group)) {
+      grouped.set(group, []);
+    }
+    grouped.get(group)!.push(ing);
+  });
+
+  // Build ingredientRows with group titles
+  grouped.forEach((ings, groupTitle) => {
+    if (groupTitle) {
+      ingredientRows.push({
+        position: position++,
+        rowType: 'כותרת',
+        title: groupTitle,
+      });
+    }
+    ings.forEach(ing => {
+      ingredientRows.push({
+        position: position++,
+        rowType: 'מצרך',
+        name: ing.name,
+        quantity: ing.amount ? parseFloat(ing.amount) : undefined,
+        unit: ing.unit || undefined,
+        groupTitle: groupTitle,
+      });
+    });
+  });
+
+  // Convert instructions to steps
+  const steps = recipe.instructions?.map((inst, idx) => ({
+    position: idx,
+    stepType: inst.type as 'text' | 'image',
+    textContent: inst.type === 'text' ? inst.content : undefined,
+    imageUrl: inst.type === 'image' ? inst.url : undefined,
+  })) || [];
+
+  return {
+    name: recipe.title,
+    prepMinutes: parseTimeToMinutes(recipe.workTime),
+    totalMinutes: parseTimeToMinutes(recipe.totalTime),
+    servings: recipe.servings,
+    imageUrl: recipe.imageUrl || '',
+    tips: recipe.tips,
+    labels: recipe.tags || [],
+    ingredientRows,
+    steps,
+  };
+}
+
+// Helper to convert backend response to frontend Recipe format
+function mapBackendToRecipe(backendRecipe: any): Recipe {
+  // Convert ingredientRows back to ingredients
+  const ingredients: Ingredient[] = [];
+  backendRecipe.ingredientRows?.forEach((row: any) => {
+    if (row.rowType === 'מצרך') {
+      ingredients.push({
+        name: row.name || '',
+        amount: row.quantity?.toString() || '',
+        unit: row.unit || '',
+        groupTitle: row.groupTitle,
+      });
+    }
+  });
+
+  // Convert steps back to instructions
+  const instructions: InstructionItem[] = backendRecipe.steps?.map((step: any) => {
+    if (step.stepType === 'text') {
+      return { type: 'text', content: step.textContent || '' };
+    } else {
+      return { type: 'image', url: step.imageUrl || '' };
+    }
+  }) || [];
+
+  // Convert minutes back to time strings
+  const workTime = backendRecipe.prepMinutes ? `${backendRecipe.prepMinutes} דקות` : undefined;
+  const totalTime = backendRecipe.totalMinutes ? `${backendRecipe.totalMinutes} דקות` : undefined;
+
+  return {
+    id: backendRecipe.id,
+    title: backendRecipe.name,
+    ingredients,
+    instructions,
+    workTime,
+    totalTime,
+    servings: backendRecipe.servings,
+    imageUrl: backendRecipe.imageUrl || '',
+    author: backendRecipe.ownerUserId,
+    tags: backendRecipe.labels || [],
+    tips: backendRecipe.tips,
+    saveCount: backendRecipe.isSaved ? 1 : 0,
+  };
+}
 
 // TODO: Update this URL to match your backend server
 const API_BASE_URL = 'http://192.168.1.51:5005/api';
@@ -65,9 +173,16 @@ async function apiRequest<T>(
 
 export async function fetchMyRecipes(): Promise<GetRecipesResponse> {
   try {
-    return await apiRequest<GetRecipesResponse>('/recipes/my', {
+    const response = await apiRequest<any>('/recipes', {
       method: 'GET',
     });
+    
+    if (response.ok && response.recipes) {
+      const recipes = response.recipes.map(mapBackendToRecipe);
+      return { ok: true, recipes };
+    }
+    
+    return { ok: false, recipes: [] };
   } catch (error) {
     console.error('fetchMyRecipes error:', error);
     return { ok: false, recipes: [] };
@@ -76,20 +191,27 @@ export async function fetchMyRecipes(): Promise<GetRecipesResponse> {
 
 export async function fetchOthersRecipes(): Promise<GetRecipesResponse> {
   try {
-    return await apiRequest<GetRecipesResponse>('/recipes/others', {
-      method: 'GET',
-    });
+    // TODO: Backend doesn't have a separate endpoint for others' recipes yet
+    // For now, return empty array
+    return { ok: true, recipes: [] };
   } catch (error) {
     console.error('fetchOthersRecipes error:', error);
     return { ok: false, recipes: [] };
   }
 }
 
-export async function fetchRecipeById(id: number): Promise<GetRecipeByIdResponse> {
+export async function fetchRecipeById(id: number | string): Promise<GetRecipeByIdResponse> {
   try {
-    return await apiRequest<GetRecipeByIdResponse>(`/recipes/${id}`, {
+    const response = await apiRequest<any>(`/recipes/${id}`, {
       method: 'GET',
     });
+    
+    if (response.ok && response.recipe) {
+      const recipe = mapBackendToRecipe(response.recipe);
+      return { ok: true, recipe };
+    }
+    
+    return { ok: false, error: 'Recipe not found' };
   } catch (error) {
     console.error('fetchRecipeById error:', error);
     return { ok: false, error: 'Failed to fetch recipe' };
@@ -98,10 +220,18 @@ export async function fetchRecipeById(id: number): Promise<GetRecipeByIdResponse
 
 export async function createRecipe(data: CreateRecipeRequest): Promise<CreateRecipeResponse> {
   try {
-    return await apiRequest<CreateRecipeResponse>('/recipes', {
+    const backendData = mapRecipeToCreateRequest(data);
+    const response = await apiRequest<any>('/recipes', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(backendData),
     });
+    
+    if (response.ok && response.recipe) {
+      const recipe = mapBackendToRecipe(response.recipe);
+      return { ok: true, recipe };
+    }
+    
+    return { ok: false, error: 'Failed to create recipe' };
   } catch (error) {
     console.error('createRecipe error:', error);
     return { ok: false, error: 'Failed to create recipe' };
@@ -110,17 +240,25 @@ export async function createRecipe(data: CreateRecipeRequest): Promise<CreateRec
 
 export async function updateRecipe(data: UpdateRecipeRequest): Promise<UpdateRecipeResponse> {
   try {
-    return await apiRequest<UpdateRecipeResponse>(`/recipes/${data.id}`, {
+    const backendData = mapRecipeToCreateRequest(data);
+    const response = await apiRequest<any>(`/recipes/${data.id}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify(backendData),
     });
+    
+    if (response.ok && response.recipe) {
+      const recipe = mapBackendToRecipe(response.recipe);
+      return { ok: true, recipe };
+    }
+    
+    return { ok: false, error: 'Failed to update recipe' };
   } catch (error) {
     console.error('updateRecipe error:', error);
     return { ok: false, error: 'Failed to update recipe' };
   }
 }
 
-export async function deleteRecipe(id: number): Promise<DeleteRecipeResponse> {
+export async function deleteRecipe(id: number | string): Promise<DeleteRecipeResponse> {
   try {
     return await apiRequest<DeleteRecipeResponse>(`/recipes/${id}`, {
       method: 'DELETE',
@@ -131,7 +269,7 @@ export async function deleteRecipe(id: number): Promise<DeleteRecipeResponse> {
   }
 }
 
-export async function copyRecipeToMy(id: number): Promise<CreateRecipeResponse> {
+export async function copyRecipeToMy(id: number | string): Promise<CreateRecipeResponse> {
   try {
     return await apiRequest<CreateRecipeResponse>(`/recipes/${id}/copy`, {
       method: 'POST',
@@ -146,9 +284,9 @@ export async function copyRecipeToMy(id: number): Promise<CreateRecipeResponse> 
 
 export async function fetchMeals(): Promise<GetMealsResponse> {
   try {
-    return await apiRequest<GetMealsResponse>('/meals', {
-      method: 'GET',
-    });
+    // TODO: Backend doesn't have meals endpoint yet
+    // For now, return empty array
+    return { ok: true, meals: [] };
   } catch (error) {
     console.error('fetchMeals error:', error);
     return { ok: false, meals: [] };
@@ -190,7 +328,7 @@ export async function addRecipeToMeal(data: AddRecipeToMealRequest): Promise<Add
   }
 }
 
-export async function removeRecipeFromMeal(mealId: number, recipeId: number): Promise<AddRecipeToMealResponse> {
+export async function removeRecipeFromMeal(mealId: number, recipeId: number | string): Promise<AddRecipeToMealResponse> {
   try {
     return await apiRequest<AddRecipeToMealResponse>(`/meals/${mealId}/recipes/${recipeId}`, {
       method: 'DELETE',

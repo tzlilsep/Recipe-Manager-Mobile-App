@@ -1,8 +1,9 @@
 // English comments only.
 
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ArrowLeft } from 'lucide-react-native';
 import { useRecipeBook } from '../model/useRecipeBook';
 import { ShoppingListData, Ingredient, Recipe } from '../model/types';
 import { TabsBar, RecipeFiltersModal, AddToShoppingListModal } from './components';
@@ -59,14 +60,13 @@ export function RecipeBookScreen({ onBack, shoppingLists = [], onAddToShoppingLi
     <SafeAreaView style={styles.screen} edges={['top','left','right']}>
       <TabsBar
         safeTop={safeTop}
-        onBack={onBack}
         activeTab={vm.activeTab}
         onChangeTab={vm.setActiveTab}
       />
 
       {(vm.activeTab === 'my' || vm.activeTab === 'others') && (
         <RecipeListScreen
-          title={vm.activeTab === 'my' ? 'המתכונים שלי' : 'חפש מתכונים'}
+          title={''}
           recipes={listData}
           onOpenRecipe={vm.openRecipe}
           onOpenFilters={() => setFiltersOpen(true)}
@@ -83,10 +83,12 @@ export function RecipeBookScreen({ onBack, shoppingLists = [], onAddToShoppingLi
 
       {vm.activeTab === 'addEdit' && (
         <AddEditRecipeScreen
+          key={vm.editingRecipe?.id ?? 'new'}
           editingRecipe={vm.editingRecipe}
           onSave={(recipe: Recipe) => {
             if (vm.editingRecipe) vm.updateMyRecipe(recipe);
             else vm.addMyRecipe(recipe);
+            vm.clearEditingRecipe();
             vm.setActiveTab('my');
           }}
         />
@@ -137,10 +139,38 @@ export function RecipeBookScreen({ onBack, shoppingLists = [], onAddToShoppingLi
           setShoppingModalOpen(false);
         }}
       />
+
+      <TouchableOpacity style={styles.backButton} onPress={onBack}>
+        <ArrowLeft size={20} color="#bb6f66ff" style={{ marginLeft: 6 }} />
+        <Text style={styles.backButtonText}>חזור</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FFFFFF' },
+  screen: { flex: 1, backgroundColor: '#ecd7c2ff' },
+  backButton: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  backButtonText: {
+    color: '#bb6f66ff',
+    fontWeight: '600',
+    fontSize: 16,
+  },
 });

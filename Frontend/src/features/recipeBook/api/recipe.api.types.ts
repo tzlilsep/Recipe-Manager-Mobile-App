@@ -35,7 +35,7 @@ export interface CreateRecipeResponse {
 }
 
 export interface UpdateRecipeRequest extends CreateRecipeRequest {
-  id: number;
+  id: number | string;
 }
 
 export interface UpdateRecipeResponse {
@@ -67,7 +67,7 @@ export interface CreateMealResponse {
 
 export interface AddRecipeToMealRequest {
   mealId: number;
-  recipeId: number;
+  recipeId: number | string;
 }
 
 export interface AddRecipeToMealResponse {

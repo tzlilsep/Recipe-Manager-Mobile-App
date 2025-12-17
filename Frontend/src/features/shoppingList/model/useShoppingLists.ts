@@ -129,6 +129,14 @@ export function useShoppingLists(
     );
   };
 
+  const reorderItems = (listId: number, newOrder: any[]) => {
+    setLists(prev =>
+      prev.map(l =>
+        l.id === listId ? { ...l, items: newOrder } : l
+      )
+    );
+  };
+
   const reorderLists = (sourceIndex: number, destIndex: number) => {
     if (sourceIndex === destIndex) return;
     setLists(prev => {
@@ -197,6 +205,7 @@ export function useShoppingLists(
     deleteItem,
     toggleItem,
     clearCompleted,
+    reorderItems,
     reorderLists,
     moveListBefore,
 

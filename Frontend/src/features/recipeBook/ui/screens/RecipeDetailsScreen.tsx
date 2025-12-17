@@ -109,7 +109,6 @@ export function RecipeDetailsScreen({ recipe, onBack, onEdit, onDelete, onCopy, 
 
         <Text style={styles.sectionTitle}>הוראות הכנה</Text>
         <View style={styles.box}>
-          letCount
           {recipe.instructions.map((step, idx) => {
             if (step.type === 'image') {
               return <Image key={`img-${idx}`} source={{ uri: step.url }} style={styles.stepImage} />;

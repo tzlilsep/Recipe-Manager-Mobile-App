@@ -9,7 +9,7 @@ import { RecipeCard } from '../components';
 interface Props {
   title: string;
   recipes: Recipe[];
-  onOpenRecipe: (id: number) => void;
+  onOpenRecipe: (id: number | string) => void;
   onOpenFilters: () => void;
   filtersBadgeCount: number;
   showPopularToggle: boolean;
@@ -25,8 +25,8 @@ export function RecipeListScreen({
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>{title}</Text>
-        <Button variant="outline" onPress={onOpenFilters}>
+        {title && <Text style={styles.title}>{title}</Text>}
+        <Button variant="outline" onPress={onOpenFilters} style={styles.filterButton}>
           <Text style={styles.filterText}>
             סינון{filtersBadgeCount > 0 ? ` (${filtersBadgeCount})` : ''}
           </Text>
@@ -54,15 +54,19 @@ export function RecipeListScreen({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  container: { flex: 1, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 12, backgroundColor: '#FFFFFF' },
   headerRow: {
     flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 4,
   },
   title: { textAlign: 'right', fontSize: 16, fontWeight: '800', color: '#111827' },
-  filterText: { fontWeight: '700', color: '#111827' },
+  filterButton: {
+    height: 32,
+    paddingHorizontal: 12,
+  },
+  filterText: { fontWeight: '700', color: '#111827', fontSize: 13 },
   list: { gap: 12, paddingBottom: 24 },
   row: { gap: 12 },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },

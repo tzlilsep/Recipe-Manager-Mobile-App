@@ -20,7 +20,7 @@ function mapError(e) {
     return { status: 400, code };
 }
 exports.shoppingListController = {
-    async getLists(req, res) {
+    getLists: (async (req, res) => {
         try {
             const take = (0, shoppingList_validators_1.asInt)(req.query.take, 20);
             const lists = await shoppingList_service_1.ShoppingListService.getLists(toUserCtx(req), take);
@@ -30,8 +30,8 @@ exports.shoppingListController = {
             const m = mapError(e);
             res.status(m.status).json({ lists: [] });
         }
-    },
-    async createList(req, res) {
+    }),
+    createList: (async (req, res) => {
         try {
             const name = (0, shoppingList_validators_1.asNonEmptyString)(req.body?.name, 'INVALID_NAME');
             const order = req.body?.order != null ? (0, shoppingList_validators_1.asInt)(req.body.order, 0) : undefined;
@@ -42,8 +42,8 @@ exports.shoppingListController = {
             const m = mapError(e);
             res.status(m.status).json({ ok: false, error: m.code });
         }
-    },
-    async loadList(req, res) {
+    }),
+    loadList: (async (req, res) => {
         try {
             const listId = (0, shoppingList_validators_1.asNonEmptyString)(req.params.listId, 'INVALID_LIST_ID');
             const list = await shoppingList_service_1.ShoppingListService.loadList(toUserCtx(req), listId);
@@ -53,8 +53,8 @@ exports.shoppingListController = {
             const m = mapError(e);
             res.status(m.status).json({ ok: false, error: m.code });
         }
-    },
-    async saveList(req, res) {
+    }),
+    saveList: (async (req, res) => {
         try {
             const listId = (0, shoppingList_validators_1.asNonEmptyString)(req.params.listId, 'INVALID_LIST_ID');
             const dto = req.body?.list;
@@ -67,8 +67,8 @@ exports.shoppingListController = {
             const m = mapError(e);
             res.status(m.status).json({ ok: false, error: m.code });
         }
-    },
-    async deleteList(req, res) {
+    }),
+    deleteList: (async (req, res) => {
         try {
             const listId = (0, shoppingList_validators_1.asNonEmptyString)(req.params.listId, 'INVALID_LIST_ID');
             await shoppingList_service_1.ShoppingListService.deleteList(toUserCtx(req), listId);
@@ -78,8 +78,8 @@ exports.shoppingListController = {
             const m = mapError(e);
             res.status(m.status).json({ ok: false, error: m.code });
         }
-    },
-    async shareList(req, res) {
+    }),
+    shareList: (async (req, res) => {
         try {
             const listId = (0, shoppingList_validators_1.asNonEmptyString)(req.params.listId, 'INVALID_LIST_ID');
             const target = (0, shoppingList_validators_1.asNonEmptyString)(req.body?.target, 'INVALID_TARGET');
@@ -90,8 +90,8 @@ exports.shoppingListController = {
             const m = mapError(e);
             res.status(m.status).json({ ok: false, error: m.code });
         }
-    },
-    async leaveList(req, res) {
+    }),
+    leaveList: (async (req, res) => {
         try {
             const listId = (0, shoppingList_validators_1.asNonEmptyString)(req.params.listId, 'INVALID_LIST_ID');
             await shoppingList_service_1.ShoppingListService.leaveList(toUserCtx(req), listId);
@@ -101,5 +101,5 @@ exports.shoppingListController = {
             const m = mapError(e);
             res.status(m.status).json({ ok: false, listId: req.params.listId, error: m.code });
         }
-    },
+    }),
 };

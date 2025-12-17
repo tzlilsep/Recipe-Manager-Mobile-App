@@ -2,6 +2,7 @@
 
 import React, { useRef, useEffect } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { Button } from '../../../../components/ui/button';
 import { RecipeBookTab } from '../../model/useRecipeBook';
 
@@ -17,12 +18,11 @@ const TABS: TabItem[] = [
 
 interface Props {
   safeTop: number;
-  onBack: () => void;
   activeTab: RecipeBookTab;
   onChangeTab: (tab: RecipeBookTab) => void;
 }
 
-export function TabsBar({ safeTop, onBack, activeTab, onChangeTab }: Props) {
+export function TabsBar({ safeTop, activeTab, onChangeTab }: Props) {
   const scrollRef = useRef<ScrollView>(null);
 
   // Scroll to the right edge on mount (RTL - shows rightmost tabs first)
@@ -34,13 +34,6 @@ export function TabsBar({ safeTop, onBack, activeTab, onChangeTab }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>ספר מתכונים</Text>
-        <Button variant="outline" onPress={onBack}>
-          <Text style={styles.backText}>חזרה</Text>
-        </Button>
-      </View>
-
       <ScrollView
         ref={scrollRef}
         horizontal
@@ -68,15 +61,7 @@ export function TabsBar({ safeTop, onBack, activeTab, onChangeTab }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  headerRow: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  title: { fontSize: 20, fontWeight: '700', color: '#111827' },
-  backText: { color: '#111827', fontWeight: '600' },
+  container: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
   tabsRow: { flexDirection: 'row-reverse', gap: 10 },
   tab: {
     paddingHorizontal: 14,
@@ -86,7 +71,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
   },
-  tabActive: { backgroundColor: '#111827', borderColor: '#111827' },
-  tabText: { color: '#111827', fontWeight: '600' },
+  tabActive: { backgroundColor: '#e2857bff', borderColor: '#ffffffff' },
+  tabText: { color: '#bb6f66ff', fontWeight: '600' },
   tabTextActive: { color: '#FFFFFF' },
 });

@@ -14,8 +14,8 @@ export function HomeHeader({ username, onLogout }: Props) {
     <View style={styles.container}>
       <Text style={styles.title}>שלום, {username}!</Text>
       <Button variant="outline" onPress={onLogout}>
-        <LogOut color="#111827" size={18} />
         <Text style={styles.logoutText}>התנתק</Text>
+        <LogOut color="#111827" size={18} />
       </Button>
     </View>
   );

@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Button } from '../../../../components/ui/button';
-import { AVAILABLE_TAGS } from '../../model/mockData';
+import { AVAILABLE_TAGS } from '../../model/types';
 import { Ingredient, InstructionItem, Recipe } from '../../model/types';
 import { IngredientEditor, InstructionEditor, TagPicker } from '../components';
 

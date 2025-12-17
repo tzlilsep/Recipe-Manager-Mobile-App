@@ -59,10 +59,11 @@ export function InstructionEditor({ value, onChange }: Props) {
       <Button variant="outline" onPress={pickImage}><Text style={styles.btnText}>הוסף תמונת שלב מהגלריה</Text></Button>
 
       {value.length > 0 ? (
-        <GestureHandlerRootView style={{ flex: 1 }}>
+        <GestureHandlerRootView>
           <DraggableFlatList
             data={value.map((item, idx) => ({ ...item, idx }))}
             keyExtractor={(item) => `${item.type}-${item.idx}`}
+            scrollEnabled={false}
             onDragEnd={({ data }) => onChange(data.map(({ idx, ...item }) => item))}
             renderItem={({ item, drag, isActive }: RenderItemParams<InstructionItem & { idx: number }>) => (
               <ScaleDecorator>

@@ -1,5 +1,23 @@
 // English comments only.
 
+// Tags must match recipe_label enum in database (001_init.sql)
+export const AVAILABLE_TAGS = [
+  'קינוח',
+  'עוף',
+  'בשר',
+  'דגים',
+  'טבעוני',
+  'צמחוני',
+  'מרק',
+  'מאפה',
+  'אפייה',
+  'סלט',
+  'מנה ראשונה',
+  'מנה עיקרית',
+  'תוספת',
+  'חגיגי',
+] as const;
+
 export type InstructionItem =
   | { type: 'text'; content: string }
   | { type: 'image'; url: string };
@@ -12,7 +30,7 @@ export interface Ingredient {
 }
 
 export interface Recipe {
-  id: number;
+  id: number | string;  // Backend uses UUID (string), but we support both
   title: string;
   ingredients: Ingredient[];
   instructions: InstructionItem[];
@@ -31,7 +49,7 @@ export interface Meal {
   id: number;
   name: string;
   imageUrl?: string;
-  recipeIds: number[];
+  recipeIds: (number | string)[];  // Support both number and string IDs
 }
 
 export interface ShoppingListData {

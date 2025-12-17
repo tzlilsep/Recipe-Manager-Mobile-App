@@ -82,10 +82,11 @@ export function IngredientEditor({ value, onChange }: Props) {
       <Button onPress={add}><Text style={styles.primaryText}>הוסף מצרך</Text></Button>
 
       {value.length > 0 ? (
-        <GestureHandlerRootView style={{ flex: 1 }}>
+        <GestureHandlerRootView>
           <DraggableFlatList
             data={flatList}
             keyExtractor={(item) => item.id}
+            scrollEnabled={false}
             onDragEnd={({ data }) => {
               // Rebuild ingredients array based on new order
               const newIngredients: Ingredient[] = [];

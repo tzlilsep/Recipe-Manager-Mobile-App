@@ -1,6 +1,7 @@
 // Frontend/src/features/shoppingList/ui/ShoppingListScreen.tsx
 import React from 'react';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ShoppingListData } from '../model/domain/shopping.types';
 import { ShoppingListsScreen } from './lists/screens/ShoppingListsScreen';
 import { ShoppingListDetailsScreen } from './editList/screens/ShoppingListDetailsScreen';
@@ -20,18 +21,21 @@ export function ShoppingListScreen({ onBack, initialLists = [] }: Props) {
 
   if (c.selectedListId !== null && c.currentList) {
     return (
-      <SafeAreaView style={{ flex: 1 }} edges={['top','left','right']}>
-        <ShoppingListDetailsScreen
-          safeTop={safeTop}
-          list={c.currentList}
-          onBack={c.closeList}
-          onRename={c.saveName}
-          onAddItem={c.addItem}
-          onToggleItem={c.toggleItem}
-          onDeleteItem={c.deleteItem}
-          onClearCompleted={c.clearCompleted}
-        />
-      </SafeAreaView>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaView style={{ flex: 1 }} edges={['top','left','right']}>
+          <ShoppingListDetailsScreen
+            safeTop={safeTop}
+            list={c.currentList}
+            onBack={c.closeList}
+            onRename={c.saveName}
+            onAddItem={c.addItem}
+            onToggleItem={c.toggleItem}
+            onDeleteItem={c.deleteItem}
+            onReorderItems={c.reorderItems}
+            onClearCompleted={c.clearCompleted}
+          />
+        </SafeAreaView>
+      </GestureHandlerRootView>
     );
   }
 

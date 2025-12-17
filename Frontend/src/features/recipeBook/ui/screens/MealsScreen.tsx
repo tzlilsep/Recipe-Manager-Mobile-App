@@ -14,10 +14,10 @@ interface Props {
   onAddMeal: (name: string, imageUrl?: string) => void;
   onDeleteMeal: (mealId: number) => void;
 
-  onAddRecipeToMeal: (mealId: number, recipeId: number) => void;
-  onRemoveRecipeFromMeal: (mealId: number, recipeId: number) => void;
+  onAddRecipeToMeal: (mealId: number, recipeId: number | string) => void;
+  onRemoveRecipeFromMeal: (mealId: number, recipeId: number | string) => void;
 
-  onOpenRecipe: (id: number) => void;
+  onOpenRecipe: (id: number | string) => void;
 
   onAddMealToShopping: (ingredients: Ingredient[]) => void;
 }
@@ -130,7 +130,7 @@ export function MealsScreen({
         onClose={() => setAddRecipeOpen(false)}
         meal={activeMeal}
         recipes={allRecipes}
-        onPickRecipe={(recipeId: number) => {
+        onPickRecipe={(recipeId: number | string) => {
           if (!activeMeal) return;
           onAddRecipeToMeal(activeMeal.id, recipeId);
           setAddRecipeOpen(false);
@@ -141,7 +141,7 @@ export function MealsScreen({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, gap: 12 },
+  container: { flex: 1, padding: 16, gap: 12, backgroundColor: '#FFFFFF' },
   primaryText: { fontWeight: '900', color: '#FFFFFF' },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   emptyText: { color: '#6B7280', textAlign: 'center' },

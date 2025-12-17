@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Button } from '../../../../components/ui/button';
-import { AVAILABLE_TAGS } from '../../model/mockData';
+import { AVAILABLE_TAGS } from '../../model/types';
 import { RecipeFiltersState } from '../../model/useRecipeBook';
 
 interface Props {

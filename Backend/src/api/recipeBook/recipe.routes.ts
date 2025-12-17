@@ -18,6 +18,9 @@ export function createRecipeRouter(): Router {
   // All routes require authentication
   router.use(requireAuth);
 
+  // GET /api/recipes/tags - Get all available recipe tags
+  router.get('/tags', recipeController.getTags);
+
   // GET /api/recipes - Get all recipes for the authenticated user
   router.get('/', recipeController.getUserRecipes);
 

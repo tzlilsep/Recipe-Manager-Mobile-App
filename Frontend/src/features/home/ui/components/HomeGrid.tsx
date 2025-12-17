@@ -15,20 +15,20 @@ export function HomeGrid({ onNavigate }: Props) {
     <View style={styles.grid}>
       <View style={styles.col}>
         <FeatureCard
-          icon={<BookOpen color="#8fb884ff" size={48} />}
+          icon={<BookOpen color="#eaa29aff" size={48} />}
           title="ספר מתכונים"
           subtitle="שמור ונהל את המתכונים שלך"
-          bgColor="#d1ebcaff"
+          bgColor="#ffd1cbff"
           onPress={() => onNavigate('recipes')}
         />
       </View>
 
       <View style={styles.col}>
         <FeatureCard
-          icon={<ShoppingCart color="#7d9cd1ff" size={48} />}
+          icon={<ShoppingCart color="#eaa29aff" size={48} />}
           title="רשימת קניות"
           subtitle="נהל את רשימת הקניות שלך"
-          bgColor="#cbd8eeff"
+          bgColor="#ffd1cbff"
           onPress={() => onNavigate('shopping')}
         />
       </View>

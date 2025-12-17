@@ -12,6 +12,18 @@ import {
 } from './recipe.types';
 
 export class RecipeService {
+  // Get all available recipe tags from the database enum
+  async getAvailableTags(): Promise<string[]> {
+    const result = await db.query<{ enumlabel: string }>(
+      `
+      SELECT enumlabel
+      FROM pg_enum
+      WHERE enumtypid = 'recipe_label'::regtype
+      ORDER BY enumsortorder
+      `
+    );
+    return result.rows.map(row => row.enumlabel);
+  }
   // Get all recipes for a user (owned or saved)
   async getUserRecipes(userId: string): Promise<RecipeDetail[]> {
     const result = await db.query<any>(

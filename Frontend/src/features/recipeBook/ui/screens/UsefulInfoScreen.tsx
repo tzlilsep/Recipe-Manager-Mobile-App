@@ -92,7 +92,7 @@ function nextUnit(current: keyof typeof liquidConversionTable) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, gap: 10 },
+  container: { flex: 1, padding: 16, gap: 10, backgroundColor: '#FFFFFF' },
   title: { textAlign: 'right', fontWeight: '900', color: '#111827', marginTop: 8 },
   card: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 14, padding: 12, gap: 10 },
   label: { textAlign: 'right', fontWeight: '800', color: '#111827' },

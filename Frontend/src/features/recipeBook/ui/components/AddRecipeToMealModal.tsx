@@ -10,7 +10,7 @@ interface Props {
   onClose: () => void;
   meal: Meal | null;
   recipes: Recipe[];
-  onPickRecipe: (recipeId: number) => void;
+  onPickRecipe: (recipeId: number | string) => void;
 }
 
 export function AddRecipeToMealModal({ visible, onClose, meal, recipes, onPickRecipe }: Props) {
