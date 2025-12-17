@@ -4,6 +4,6 @@ import { RecipeBookScreen } from '../src/features/recipeBook';
 
 export default function RecipesRoute() {
   return (
-    <RecipeBookScreen onBack={() => router.back} />    
+    <RecipeBookScreen onBack={() => router.back()} />    
   );
 }
