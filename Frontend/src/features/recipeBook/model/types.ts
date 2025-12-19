@@ -15,7 +15,7 @@ export const AVAILABLE_TAGS = [
   'מנה ראשונה',
   'מנה עיקרית',
   'תוספת',
-  'חגיגי',
+  'עוגה',
 ] as const;
 
 export type InstructionItem =

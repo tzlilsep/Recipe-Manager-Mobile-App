@@ -55,6 +55,7 @@ export type RecipeStepInput = {
 export type RecipeResponse = {
   id: string;
   ownerUserId: string;
+  ownerUsername?: string;
   name: string;
   prepMinutes?: number;
   totalMinutes?: number;
@@ -67,6 +68,7 @@ export type RecipeResponse = {
   ingredientRows: IngredientRowResponse[];
   steps: RecipeStepResponse[];
   isSaved?: boolean;
+  saveCount?: number;
 };
 
 // Response format for ingredient row

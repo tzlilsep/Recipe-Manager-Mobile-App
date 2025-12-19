@@ -28,7 +28,7 @@ export type RecipeLabel =
   | 'מנה ראשונה'
   | 'מנה עיקרית'
   | 'תוספת'
-  | 'חגיגי';
+  | 'עוגה';
 
 export type RecipeStepType = 'text' | 'image';
 export type RecipeIngredientRowType = 'כותרת' | 'מצרך';
@@ -64,6 +64,7 @@ export type RecipeStep = {
 export type Recipe = {
   id: string;
   ownerUserId: string;
+  ownerUsername?: string;
   name: string;
   prepMinutes?: number;
   totalMinutes?: number;
@@ -72,6 +73,7 @@ export type Recipe = {
   tips?: string;
   createdAt: Date;
   updatedAt: Date;
+  saveCount?: number;
 };
 
 // Full recipe with all related data

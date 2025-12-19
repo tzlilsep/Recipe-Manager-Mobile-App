@@ -1,6 +1,6 @@
 // English comments only.
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
 import { Button } from '../../../../components/ui/button';
@@ -20,17 +20,24 @@ interface Props {
   safeTop: number;
   activeTab: RecipeBookTab;
   onChangeTab: (tab: RecipeBookTab) => void;
+  initialScrollToEnd?: boolean;
+  onScrollX?: (x: number) => void;
+  scrollX?: number;
 }
 
-export function TabsBar({ safeTop, activeTab, onChangeTab }: Props) {
+export function TabsBar({ safeTop, activeTab, onChangeTab, initialScrollToEnd = true, onScrollX, scrollX }: Props) {
   const scrollRef = useRef<ScrollView>(null);
+  // Always show tabs bar
+  const showTabsBar = true;
 
-  // Scroll to the right edge on mount (RTL - shows rightmost tabs first)
+  // Scroll to the right edge only on first mount
   useEffect(() => {
-    setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: false });
-    }, 100);
-  }, []);
+    if (initialScrollToEnd) {
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: false });
+      }, 100);
+    }
+  }, [initialScrollToEnd]);
 
   return (
     <View style={styles.container}>
@@ -40,6 +47,10 @@ export function TabsBar({ safeTop, activeTab, onChangeTab }: Props) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.tabsRow}
         directionalLockEnabled
+        onScroll={e => {
+          onScrollX?.(e.nativeEvent.contentOffset.x);
+        }}
+        scrollEventThrottle={16}
       >
         {TABS.map(t => {
           const isActive = t.key === activeTab;

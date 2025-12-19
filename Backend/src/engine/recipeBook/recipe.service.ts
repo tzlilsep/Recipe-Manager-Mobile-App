@@ -24,13 +24,15 @@ export class RecipeService {
     );
     return result.rows.map(row => row.enumlabel);
   }
-  // Get all recipes for a user (owned or saved)
-  async getUserRecipes(userId: string): Promise<RecipeDetail[]> {
+
+  // Get all recipes from all users
+  async getAllRecipes(userId: string): Promise<RecipeDetail[]> {
     const result = await db.query<any>(
       `
       SELECT DISTINCT
         r.id,
         r.owner_user_id,
+        u.username as owner_username,
         r.name,
         r.prep_minutes,
         r.total_minutes,
@@ -39,8 +41,61 @@ export class RecipeService {
         r.tips,
         r.created_at,
         r.updated_at,
-        EXISTS(SELECT 1 FROM recipe_saves rs WHERE rs.recipe_id = r.id AND rs.user_id = $1) as is_saved
+        EXISTS(SELECT 1 FROM recipe_saves rs WHERE rs.recipe_id = r.id AND rs.user_id = $1) as is_saved,
+        (SELECT COUNT(*) FROM recipe_saves rs WHERE rs.recipe_id = r.id)::int as save_count
       FROM recipes r
+      LEFT JOIN users u ON u.id = r.owner_user_id
+      ORDER BY r.created_at DESC
+      `,
+      [userId]
+    );
+
+    const recipes: RecipeDetail[] = [];
+    
+    for (const row of result.rows) {
+      const recipe = this.mapRowToRecipe(row);
+      
+      // Fetch labels
+      const labels = await this.getRecipeLabels(recipe.id);
+      
+      // Fetch ingredient rows
+      const ingredientRows = await this.getRecipeIngredientRows(recipe.id);
+      
+      // Fetch steps
+      const steps = await this.getRecipeSteps(recipe.id);
+      
+      recipes.push({
+        ...recipe,
+        labels,
+        ingredientRows,
+        steps,
+        isSaved: row.is_saved
+      });
+    }
+    
+    return recipes;
+  }
+
+  // Get all recipes for a user (owned or saved)
+  async getUserRecipes(userId: string): Promise<RecipeDetail[]> {
+    const result = await db.query<any>(
+      `
+      SELECT DISTINCT
+        r.id,
+        r.owner_user_id,
+        u.username as owner_username,
+        r.name,
+        r.prep_minutes,
+        r.total_minutes,
+        r.servings,
+        r.image_url,
+        r.tips,
+        r.created_at,
+        r.updated_at,
+        EXISTS(SELECT 1 FROM recipe_saves rs WHERE rs.recipe_id = r.id AND rs.user_id = $1) as is_saved,
+        (SELECT COUNT(*) FROM recipe_saves rs WHERE rs.recipe_id = r.id)::int as save_count
+      FROM recipes r
+      LEFT JOIN users u ON u.id = r.owner_user_id
       LEFT JOIN recipe_saves rs ON rs.recipe_id = r.id
       WHERE r.owner_user_id = $1 OR rs.user_id = $1
       ORDER BY r.created_at DESC
@@ -81,6 +136,7 @@ export class RecipeService {
       SELECT
         r.id,
         r.owner_user_id,
+        u.username as owner_username,
         r.name,
         r.prep_minutes,
         r.total_minutes,
@@ -89,8 +145,10 @@ export class RecipeService {
         r.tips,
         r.created_at,
         r.updated_at,
-        EXISTS(SELECT 1 FROM recipe_saves rs WHERE rs.recipe_id = r.id AND rs.user_id = $2) as is_saved
+        EXISTS(SELECT 1 FROM recipe_saves rs WHERE rs.recipe_id = r.id AND rs.user_id = $2) as is_saved,
+        (SELECT COUNT(*) FROM recipe_saves rs WHERE rs.recipe_id = r.id)::int as save_count
       FROM recipes r
+      LEFT JOIN users u ON u.id = r.owner_user_id
       WHERE r.id = $1
       `,
       [recipeId, userId]
@@ -124,19 +182,44 @@ export class RecipeService {
         `
         INSERT INTO recipes (owner_user_id, name, prep_minutes, total_minutes, servings, image_url, tips)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id, owner_user_id, name, prep_minutes, total_minutes, servings, image_url, tips, created_at, updated_at
+        RETURNING id
         `,
         [userId, input.name, input.prepMinutes, input.totalMinutes, input.servings, input.imageUrl, input.tips]
       );
 
-      const recipe = this.mapRowToRecipe(recipeResult.rows[0]);
+      const recipeId = recipeResult.rows[0].id;
+
+      // Fetch the recipe with username
+      const fullRecipeResult = await client.query<any>(
+        `
+        SELECT
+          r.id,
+          r.owner_user_id,
+          u.username as owner_username,
+          r.name,
+          r.prep_minutes,
+          r.total_minutes,
+          r.servings,
+          r.image_url,
+          r.tips,
+          r.created_at,
+          r.updated_at,
+          0 as save_count
+        FROM recipes r
+        LEFT JOIN users u ON u.id = r.owner_user_id
+        WHERE r.id = $1
+        `,
+        [recipeId]
+      );
+
+      const recipe = this.mapRowToRecipe(fullRecipeResult.rows[0]);
 
       // Insert labels
       if (input.labels?.length) {
         for (const label of input.labels) {
           await client.query(
             'INSERT INTO recipe_labels (recipe_id, label) VALUES ($1, $2)',
-            [recipe.id, label]
+            [recipeId, label]
           );
         }
       }
@@ -149,7 +232,7 @@ export class RecipeService {
             INSERT INTO recipe_ingredient_rows (recipe_id, position, row_type, title, name, quantity, unit, group_title)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             `,
-            [recipe.id, row.position, row.rowType, row.title, row.name, row.quantity, row.unit, row.groupTitle]
+            [recipeId, row.position, row.rowType, row.title, row.name, row.quantity, row.unit, row.groupTitle]
           );
         }
       }
@@ -162,7 +245,7 @@ export class RecipeService {
             INSERT INTO recipe_steps (recipe_id, position, step_type, text_content, image_url)
             VALUES ($1, $2, $3, $4, $5)
             `,
-            [recipe.id, step.position, step.stepType, step.textContent, step.imageUrl]
+            [recipeId, step.position, step.stepType, step.textContent, step.imageUrl]
           );
         }
       }
@@ -170,9 +253,9 @@ export class RecipeService {
       await client.query('COMMIT');
 
       // Return full recipe detail
-      const labels = await this.getRecipeLabels(recipe.id);
-      const ingredientRows = await this.getRecipeIngredientRows(recipe.id);
-      const steps = await this.getRecipeSteps(recipe.id);
+      const labels = await this.getRecipeLabels(recipeId);
+      const ingredientRows = await this.getRecipeIngredientRows(recipeId);
+      const steps = await this.getRecipeSteps(recipeId);
 
       return {
         ...recipe,
@@ -189,23 +272,34 @@ export class RecipeService {
     }
   }
 
-  // Update an existing recipe
+  // Update an existing recipe (or create new copy if not owner)
   async updateRecipe(recipeId: string, userId: string, input: UpdateRecipeInput): Promise<RecipeDetail | null> {
+    // First check ownership before starting transaction
+    const ownerCheck = await db.query<any>(
+      'SELECT owner_user_id FROM recipes WHERE id = $1',
+      [recipeId]
+    );
+
+    if (!ownerCheck.rows.length) {
+      return null;
+    }
+
+    // If user is not the owner, create a new recipe instead and unsave the original
+    if (ownerCheck.rows[0].owner_user_id !== userId) {
+      // Create new recipe with updated data
+      const newRecipe = await this.createRecipe(userId, input as CreateRecipeInput);
+      
+      // Unsave the original recipe
+      await this.unsaveRecipe(recipeId, userId);
+      
+      return newRecipe;
+    }
+
+    // User is the owner - proceed with normal update
     const client = await db.connect();
     
     try {
       await client.query('BEGIN');
-
-      // Check ownership
-      const ownerCheck = await client.query<any>(
-        'SELECT owner_user_id FROM recipes WHERE id = $1',
-        [recipeId]
-      );
-
-      if (!ownerCheck.rows.length || ownerCheck.rows[0].owner_user_id !== userId) {
-        await client.query('ROLLBACK');
-        return null;
-      }
 
       // Update recipe fields
       const updateFields: string[] = [];
@@ -301,14 +395,31 @@ export class RecipeService {
     }
   }
 
-  // Delete a recipe
+  // Delete a recipe (or unsave if not owner)
   async deleteRecipe(recipeId: string, userId: string): Promise<boolean> {
-    const result = await db.query<any>(
-      'DELETE FROM recipes WHERE id = $1 AND owner_user_id = $2 RETURNING id',
-      [recipeId, userId]
+    // First check if user is the owner
+    const ownerCheck = await db.query<any>(
+      'SELECT owner_user_id FROM recipes WHERE id = $1',
+      [recipeId]
     );
 
-    return result.rows.length > 0;
+    if (ownerCheck.rows.length === 0) {
+      return false; // Recipe doesn't exist
+    }
+
+    const isOwner = ownerCheck.rows[0].owner_user_id === userId;
+
+    if (isOwner) {
+      // User owns the recipe - delete it completely
+      const result = await db.query<any>(
+        'DELETE FROM recipes WHERE id = $1 AND owner_user_id = $2 RETURNING id',
+        [recipeId, userId]
+      );
+      return result.rows.length > 0;
+    } else {
+      // User doesn't own it - just unsave it
+      return this.unsaveRecipe(recipeId, userId);
+    }
   }
 
   // Save (favorite) a recipe
@@ -396,6 +507,7 @@ export class RecipeService {
     return {
       id: row.id,
       ownerUserId: row.owner_user_id,
+      ownerUsername: row.owner_username,
       name: row.name,
       prepMinutes: row.prep_minutes,
       totalMinutes: row.total_minutes,
@@ -403,7 +515,8 @@ export class RecipeService {
       imageUrl: row.image_url,
       tips: row.tips,
       createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at)
+      updatedAt: new Date(row.updated_at),
+      saveCount: row.save_count || 0
     };
   }
 }

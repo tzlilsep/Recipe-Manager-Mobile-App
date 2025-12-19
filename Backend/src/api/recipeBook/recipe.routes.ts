@@ -21,6 +21,9 @@ export function createRecipeRouter(): Router {
   // GET /api/recipes/tags - Get all available recipe tags
   router.get('/tags', recipeController.getTags);
 
+  // GET /api/recipes/all - Get all recipes from all users
+  router.get('/all', recipeController.getAllRecipes);
+
   // GET /api/recipes - Get all recipes for the authenticated user
   router.get('/', recipeController.getUserRecipes);
 

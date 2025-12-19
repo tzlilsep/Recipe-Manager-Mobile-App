@@ -10,7 +10,7 @@ export interface ShoppingListDto {
   listId: string;
   name: string;
   items: ShoppingItemDto[];
-  order: number;        
+  orderForUser: number;        
   isShared: boolean;          
   sharedWith: string[];        
   shareStatus?: ShareStatusDto;

@@ -85,7 +85,7 @@ function toList(rawDto: ShoppingListDto): ShoppingListData {
     id: numericId,
     name: dto.name,
     items: dto.items.map(toItem),
-    ...(dto.order != null ? { order: dto.order } : {}),
+    ...(dto.orderForUser != null ? { order: dto.orderForUser } : {}),
 
     // Sharing
     isShared: dto.isShared,
@@ -217,7 +217,7 @@ export const shoppingService = {
         listId: canonical,
         name: list.name,
         items: list.items.map(toDtoItem),
-        order: list.order ?? 0,
+        orderForUser: list.order ?? 0,
         isShared: !!list.isShared,
         sharedWith: Array.isArray(list.sharedWith) ? list.sharedWith : [],
         shareStatus: list.shareStatus,

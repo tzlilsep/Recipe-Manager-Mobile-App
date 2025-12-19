@@ -1,6 +1,7 @@
 // English comments only.
 
 import { useMemo, useState, useEffect } from 'react';
+import { Alert } from 'react-native';
 import { clamp, parseTimeMinutes } from './utils';
 import { Meal, Recipe } from './types';
 import * as recipeApi from '../api/recipe.service';
@@ -55,11 +56,34 @@ export function useRecipeBook() {
     loadRecipes();
   }, []);
 
+  // Reload others' recipes when switching to 'others' tab
+  useEffect(() => {
+    if (activeTab === 'others') {
+      const loadOthersRecipes = async () => {
+        try {
+          const othersResult = await recipeApi.fetchOthersRecipes();
+          if (othersResult.ok) {
+            setOthersRecipes(othersResult.recipes);
+          }
+        } catch (error) {
+          console.warn('Failed to reload others recipes', error);
+        }
+      };
+
+      loadOthersRecipes();
+    }
+  }, [activeTab]);
+
   const [selectedRecipeId, setSelectedRecipeId] = useState<number | string | null>(null);
   const selectedRecipe = useMemo(() => {
     const all = [...myRecipes, ...othersRecipes];
     return all.find(r => r.id === selectedRecipeId) ?? null;
   }, [myRecipes, othersRecipes, selectedRecipeId]);
+
+  const isSelectedRecipeMine = useMemo(() => {
+    if (!selectedRecipeId) return false;
+    return myRecipes.some(r => r.id === selectedRecipeId);
+  }, [selectedRecipeId, myRecipes]);
 
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
 
@@ -138,8 +162,12 @@ export function useRecipeBook() {
         tips: recipe.tips,
       });
 
-      if (result.ok && result.recipe) {
-        setMyRecipes(prev => prev.map(r => (r.id === result.recipe!.id ? result.recipe! : r)));
+      if (result.ok) {
+        // Reload my recipes (in case a new recipe was created from someone else's recipe)
+        const myResult = await recipeApi.fetchMyRecipes();
+        if (myResult.ok) {
+          setMyRecipes(myResult.recipes);
+        }
       }
     } catch (error) {
       console.warn('Failed to update recipe on server', error);
@@ -150,11 +178,17 @@ export function useRecipeBook() {
     try {
       const result = await recipeApi.copyRecipeToMy(recipe.id);
 
-      if (result.ok && result.recipe) {
-        setMyRecipes(prev => [result.recipe!, ...prev]);
+      if (result.ok) {
+        // Reload my recipes to get the saved recipe
+        const myResult = await recipeApi.fetchMyRecipes();
+        if (myResult.ok) {
+          setMyRecipes(myResult.recipes);
+        }
+        Alert.alert('נשמר בהצלחה', 'המתכון נוסף לכרטיסיה "המתכונים שלי"');
       }
     } catch (error) {
       console.warn('Failed to copy recipe on server', error);
+      Alert.alert('שגיאה', 'לא ניתן לשמור את המתכון');
     }
   };
 
@@ -193,8 +227,10 @@ export function useRecipeBook() {
       }
 
       if (filters.selectedIngredients.length > 0) {
-        const names = r.ingredients.map(i => i.name);
-        const ok = filters.selectedIngredients.every(x => names.includes(x));
+        const names = r.ingredients.map(i => i.name.toLowerCase());
+        const ok = filters.selectedIngredients.every(x => 
+          names.some(n => n.includes(x.toLowerCase()))
+        );
         if (!ok) return false;
       }
 
@@ -326,6 +362,7 @@ export function useRecipeBook() {
     getAllIngredients,
 
     selectedRecipe,
+    isSelectedRecipeMine,
     editingRecipe,
 
     openRecipe,

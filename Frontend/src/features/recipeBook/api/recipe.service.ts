@@ -2,6 +2,7 @@
 // API service for Recipe Book - handles REST calls to backend
 
 import { Recipe, Meal, Ingredient, InstructionItem } from '../model/types';
+import { parseAmountToNumber } from '../model/ingredientFormatter';
 import {
   GetRecipesResponse,
   GetRecipeByIdResponse,
@@ -17,9 +18,19 @@ import {
   AddRecipeToMealResponse,
 } from './recipe.api.types';
 
-// Helper to parse time string like "15 דקות" to minutes
+// Helper to parse time string - supports both "HH:MM" and legacy "15 דקות" formats
 function parseTimeToMinutes(timeStr?: string): number | undefined {
   if (!timeStr) return undefined;
+  
+  // Check if it's HH:MM format
+  if (timeStr.includes(':')) {
+    const [hours, minutes] = timeStr.split(':').map(s => parseInt(s.trim(), 10));
+    if (!isNaN(hours) && !isNaN(minutes)) {
+      return hours * 60 + minutes;
+    }
+  }
+  
+  // Legacy format: "15 דקות"
   const match = timeStr.match(/(\d+)/);
   return match ? parseInt(match[1], 10) : undefined;
 }
@@ -49,11 +60,12 @@ function mapRecipeToCreateRequest(recipe: Partial<Recipe>): any {
       });
     }
     ings.forEach(ing => {
+      const numericAmount = ing.amount ? parseAmountToNumber(ing.amount) : undefined;
       ingredientRows.push({
         position: position++,
         rowType: 'מצרך',
         name: ing.name,
-        quantity: ing.amount ? parseFloat(ing.amount) : undefined,
+        quantity: numericAmount && numericAmount > 0 ? numericAmount : undefined,
         unit: ing.unit || undefined,
         groupTitle: groupTitle,
       });
@@ -87,9 +99,11 @@ function mapBackendToRecipe(backendRecipe: any): Recipe {
   const ingredients: Ingredient[] = [];
   backendRecipe.ingredientRows?.forEach((row: any) => {
     if (row.rowType === 'מצרך') {
+      // Backend stores quantity as decimal number, convert to string for frontend
+      const amountStr = row.quantity != null ? String(row.quantity) : '';
       ingredients.push({
         name: row.name || '',
-        amount: row.quantity?.toString() || '',
+        amount: amountStr,
         unit: row.unit || '',
         groupTitle: row.groupTitle,
       });
@@ -105,9 +119,17 @@ function mapBackendToRecipe(backendRecipe: any): Recipe {
     }
   }) || [];
 
-  // Convert minutes back to time strings
-  const workTime = backendRecipe.prepMinutes ? `${backendRecipe.prepMinutes} דקות` : undefined;
-  const totalTime = backendRecipe.totalMinutes ? `${backendRecipe.totalMinutes} דקות` : undefined;
+  // Helper function to convert minutes to HH:MM format
+  const formatMinutesToTime = (minutes: number | null | undefined): string | undefined => {
+    if (!minutes) return undefined;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+  };
+
+  // Convert minutes back to HH:MM format
+  const workTime = formatMinutesToTime(backendRecipe.prepMinutes);
+  const totalTime = formatMinutesToTime(backendRecipe.totalMinutes);
 
   return {
     id: backendRecipe.id,
@@ -118,10 +140,10 @@ function mapBackendToRecipe(backendRecipe: any): Recipe {
     totalTime,
     servings: backendRecipe.servings,
     imageUrl: backendRecipe.imageUrl || '',
-    author: backendRecipe.ownerUserId,
+    author: backendRecipe.ownerUsername || backendRecipe.ownerUserId,
     tags: backendRecipe.labels || [],
     tips: backendRecipe.tips,
-    saveCount: backendRecipe.isSaved ? 1 : 0,
+    saveCount: backendRecipe.saveCount || 0,
   };
 }
 
@@ -191,9 +213,16 @@ export async function fetchMyRecipes(): Promise<GetRecipesResponse> {
 
 export async function fetchOthersRecipes(): Promise<GetRecipesResponse> {
   try {
-    // TODO: Backend doesn't have a separate endpoint for others' recipes yet
-    // For now, return empty array
-    return { ok: true, recipes: [] };
+    const response = await apiRequest<any>('/recipes/all', {
+      method: 'GET',
+    });
+    
+    if (response.ok && response.recipes) {
+      const recipes = response.recipes.map(mapBackendToRecipe);
+      return { ok: true, recipes };
+    }
+    
+    return { ok: false, recipes: [] };
   } catch (error) {
     console.error('fetchOthersRecipes error:', error);
     return { ok: false, recipes: [] };
@@ -271,7 +300,7 @@ export async function deleteRecipe(id: number | string): Promise<DeleteRecipeRes
 
 export async function copyRecipeToMy(id: number | string): Promise<CreateRecipeResponse> {
   try {
-    return await apiRequest<CreateRecipeResponse>(`/recipes/${id}/copy`, {
+    return await apiRequest<CreateRecipeResponse>(`/recipes/${id}/save`, {
       method: 'POST',
     });
   } catch (error) {

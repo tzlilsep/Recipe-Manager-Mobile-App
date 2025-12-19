@@ -3,4 +3,5 @@ export * from './types';
 export * from './useRecipeBook';
 export * from './utils';
 export * from './usefulInfo';
+export * from './ingredientFormatter';
 

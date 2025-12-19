@@ -7,7 +7,24 @@ import { RecipeDetail } from '../../engine/recipeBook/recipe.types';
 
 export class RecipeController {
   constructor(private recipeService: RecipeService) {}
+  // GET /api/recipes/all - Get all recipes from all users
+  getAllRecipes = async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user?.userId;
+      
+      if (!userId) {
+        return res.status(401).json({ ok: false, error: 'UNAUTHORIZED' });
+      }
 
+      const recipes = await this.recipeService.getAllRecipes(userId);
+      const response = recipes.map(this.mapRecipeToResponse);
+
+      res.json({ ok: true, recipes: response });
+    } catch (err) {
+      console.error('getAllRecipes error:', err);
+      res.status(500).json({ ok: false, error: 'INTERNAL_ERROR' });
+    }
+  };
   // GET /api/recipes - Get all recipes for the authenticated user
   getUserRecipes = async (req: Request, res: Response) => {
     try {
@@ -174,6 +191,7 @@ export class RecipeController {
     return {
       id: recipe.id,
       ownerUserId: recipe.ownerUserId,
+      ownerUsername: recipe.ownerUsername,
       name: recipe.name,
       prepMinutes: recipe.prepMinutes,
       totalMinutes: recipe.totalMinutes,
@@ -202,7 +220,8 @@ export class RecipeController {
         textContent: step.textContent,
         imageUrl: step.imageUrl
       })),
-      isSaved: recipe.isSaved
+      isSaved: recipe.isSaved,
+      saveCount: recipe.saveCount
     };
   }
 }

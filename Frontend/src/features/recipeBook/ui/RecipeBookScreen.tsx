@@ -41,15 +41,26 @@ export function RecipeBookScreen({ onBack, shoppingLists = [], onAddToShoppingLi
         <RecipeDetailsScreen
           recipe={vm.selectedRecipe}
           onBack={vm.closeRecipe}
-          onEdit={!vm.selectedRecipe.author ? () => vm.startEditRecipe(vm.selectedRecipe!) : undefined}
-          onDelete={!vm.selectedRecipe.author ? () => {
+          onEdit={vm.isSelectedRecipeMine ? () => vm.startEditRecipe(vm.selectedRecipe!) : undefined}
+          onDelete={vm.isSelectedRecipeMine ? () => {
             vm.deleteMyRecipe(vm.selectedRecipe!.id);
             vm.closeRecipe();
           } : undefined}
-          onCopy={vm.selectedRecipe.author ? () => vm.copyToMyRecipes(vm.selectedRecipe!) : undefined}
+          onCopy={!vm.isSelectedRecipeMine ? () => vm.copyToMyRecipes(vm.selectedRecipe!) : undefined}
           onOpenAddToShopping={(ingredients: Ingredient[]) => {
             setShoppingIngredients(ingredients);
             setShoppingModalOpen(true);
+          }}
+        />
+        
+        <AddToShoppingListModal
+          visible={shoppingModalOpen}
+          onClose={() => setShoppingModalOpen(false)}
+          shoppingLists={shoppingLists}
+          ingredients={shoppingIngredients}
+          onSubmit={(listId: number, ingredients: Ingredient[]) => {
+            onAddToShoppingList(listId, ingredients);
+            setShoppingModalOpen(false);
           }}
         />
       </SafeAreaView>

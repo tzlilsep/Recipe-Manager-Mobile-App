@@ -10,7 +10,7 @@ type Props = {
 
 export function NewListForm({ onSubmit }: Props) {
   const handleSubmit = () => {
-    onSubmit('רשימה חדשה');
+    onSubmit('רשימת קניות חדשה');
   };
 
     return (

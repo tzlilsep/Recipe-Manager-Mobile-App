@@ -1,11 +1,12 @@
 // English comments only.
 
 import React, { useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Button } from '../../../../components/ui/button';
 import { Ingredient } from '../../model/types';
+import { AMOUNT_HELP_TEXT, validateAmount, formatIngredientDisplay } from '../../model/ingredientFormatter';
 
 interface Props {
   value: Ingredient[];
@@ -23,7 +24,21 @@ export function IngredientEditor({ value, onChange }: Props) {
 
   const add = () => {
     if (!name.trim()) return;
-    const ing: Ingredient = { name: name.trim(), amount: amount.trim() || undefined, unit: unit || undefined };
+    
+    // Validate amount if provided
+    const amountTrimmed = amount.trim();
+    let normalizedAmount: string | undefined = undefined;
+    
+    if (amountTrimmed) {
+      const validation = validateAmount(amountTrimmed);
+      if (!validation.ok) {
+        Alert.alert('שגיאה בכמות', validation.error);
+        return;
+      }
+      normalizedAmount = validation.normalized;
+    }
+    
+    const ing: Ingredient = { name: name.trim(), amount: normalizedAmount, unit: unit || undefined };
     if (groupTitle.trim()) ing.groupTitle = groupTitle.trim();
     onChange([...value, ing]);
     setName('');
@@ -59,9 +74,18 @@ export function IngredientEditor({ value, onChange }: Props) {
     });
   });
 
+  const showAmountHelp = () => {
+    Alert.alert('', AMOUNT_HELP_TEXT, [{ text: 'סגור' }]);
+  };
+
   return (
     <View style={styles.block}>
-      <Text style={styles.title}>מצרכים</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>מצרכים</Text>
+        <TouchableOpacity onPress={showAmountHelp} style={styles.infoButton}>
+          <Text style={styles.infoIcon}>ⓘ</Text>
+        </TouchableOpacity>
+      </View>
 
       <TextInput
         value={groupTitle}
@@ -125,7 +149,7 @@ export function IngredientEditor({ value, onChange }: Props) {
                       </TouchableOpacity>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.itemText}>
-                          {item.data.name}{item.data.amount ? ` - ${item.data.amount}` : ''}{item.data.unit ? ` ${item.data.unit}` : ''}
+                          {formatIngredientDisplay(item.data)}
                         </Text>
                       </View>
                     </View>
@@ -173,7 +197,10 @@ export function IngredientEditor({ value, onChange }: Props) {
 
 const styles = StyleSheet.create({
   block: { marginTop: 10, gap: 10 },
+  titleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   title: { textAlign: 'right', fontWeight: '900', color: '#111827' },
+  infoButton: { padding: 4 },
+  infoIcon: { fontSize: 18, color: '#6B7280' },
   input: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, color: '#111827' },
   row: { flexDirection: 'row-reverse', gap: 8, alignItems: 'center' },
   small: { width: 90 },

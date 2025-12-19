@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '../../../../components/ui/button';
 import { Ingredient, ShoppingListData } from '../../model/types';
+import { formatIngredientDisplay } from '../../model/ingredientFormatter';
 
 interface Props {
   visible: boolean;
@@ -38,7 +39,7 @@ export function AddToShoppingListModal({ visible, onClose, shoppingLists, ingred
         <View style={styles.sheet}>
           <View style={styles.header}>
             <Button variant="outline" onPress={onClose}><Text style={styles.btnText}>סגור</Text></Button>
-            <Text style={styles.title}>הוסף לרשימת קניות</Text>
+            <Text style={styles.title}>הוסף מצרכים לרשימת קניות</Text>
             <View style={{ width: 72 }} />
           </View>
 
@@ -61,7 +62,7 @@ export function AddToShoppingListModal({ visible, onClose, shoppingLists, ingred
                   style={[styles.ingRow, checked && styles.ingRowChecked]}
                 >
                   <Text style={styles.ingText}>
-                    {ing.name}{ing.amount ? ` - ${ing.amount}` : ''}{ing.unit ? ` ${ing.unit}` : ''}
+                    {formatIngredientDisplay(ing)}
                   </Text>
                   <Text style={styles.check}>{checked ? '✓' : ''}</Text>
                 </TouchableOpacity>
@@ -71,6 +72,13 @@ export function AddToShoppingListModal({ visible, onClose, shoppingLists, ingred
 
           <Text style={styles.label}>בחר רשימת קניות</Text>
           <View style={styles.listsWrap}>
+            <TouchableOpacity
+              onPress={() => setSelectedListId(-1)}
+              style={[styles.pill, selectedListId === -1 && styles.pillActive]}
+            >
+              <Text style={[styles.pillText, selectedListId === -1 && styles.pillTextActive]}>+ הוסף לרשימה חדשה</Text>
+            </TouchableOpacity>
+            
             {shoppingLists.map(list => {
               const active = selectedListId === list.id;
               return (
