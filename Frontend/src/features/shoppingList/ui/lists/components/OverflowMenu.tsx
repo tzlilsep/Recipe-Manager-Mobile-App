@@ -1,7 +1,7 @@
 // Frontend/src/features/shoppingList/ui/lists/components/OverflowMenu.tsx
 import React from 'react';
 import { View, Text, Modal, TouchableOpacity, Dimensions } from 'react-native';
-import { Share2, Trash2 } from 'lucide-react-native';
+import { Share2, Trash2, ArrowUp, ArrowDown } from 'lucide-react-native';
 import { styles } from '../styles';
 
 type Props = {
@@ -10,6 +10,8 @@ type Props = {
   onClose: () => void;
   onSharePress: () => void;
   onDeletePress: () => void;
+  onMoveUpPress: () => void;
+  onMoveDownPress: () => void;
   isDeleting: boolean;
   canShare: boolean;
   deleteLabel: string;
@@ -22,6 +24,8 @@ export const OverflowMenu = ({
   onClose,
   onSharePress,
   onDeletePress,
+  onMoveUpPress,
+  onMoveDownPress,
   isDeleting,
   canShare,
   deleteLabel,
@@ -63,6 +67,26 @@ export const OverflowMenu = ({
               <Text style={styles.menuText}>
                 {canShare ? 'שיתוף רשימה' : 'שיתוף זמין לבעלים בלבד'}
               </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                onMoveUpPress();
+                onClose();
+              }}
+            >
+              <ArrowUp size={16} style={{ marginLeft: 8 }} />
+              <Text style={styles.menuText}>הזז למעלה</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                onMoveDownPress();
+                onClose();
+              }}
+            >
+              <ArrowDown size={16} style={{ marginLeft: 8 }} />
+              <Text style={styles.menuText}>הזז למטה</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.menuItem} onPress={onDeletePress} disabled={isDeleting}>
               <Trash2 size={16} color={isDeleting ? '#9CA3AF' : '#ef4444'} style={{ marginLeft: 8 }} />

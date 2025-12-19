@@ -347,6 +347,17 @@ export function useRecipeBook() {
 
   const bumpMaxTime = (minutes: number) => setFilters(prev => ({ ...prev, maxTimeMinutes: clamp(minutes, 0, 240) }));
 
+  const fetchMyRecipes = async () => {
+    try {
+      const myResult = await recipeApi.fetchMyRecipes();
+      if (myResult.ok) {
+        setMyRecipes(myResult.recipes);
+      }
+    } catch (error) {
+      console.warn('Failed to fetch my recipes', error);
+    }
+  };
+
   return {
     activeTab,
     setActiveTab,
@@ -385,5 +396,7 @@ export function useRecipeBook() {
     getMealRecipes,
 
     allRecipes,
+
+    fetchMyRecipes,
   };
 }

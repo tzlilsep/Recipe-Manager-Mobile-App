@@ -1,6 +1,6 @@
 // English comments only.
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
@@ -33,6 +33,13 @@ export function RecipeBookScreen({ onBack, shoppingLists = [], onAddToShoppingLi
     if (vm.activeTab === 'others') return vm.filteredOthersRecipes;
     return [];
   }, [vm.activeTab, vm.filteredMyRecipes, vm.filteredOthersRecipes]);
+
+  // Fetch updated data from the server whenever the 'my' tab becomes active
+  useEffect(() => {
+    if (vm.activeTab === 'my') {
+      vm.fetchMyRecipes();
+    }
+  }, [vm.activeTab]);
 
   // Details screen
   if (vm.selectedRecipe) {

@@ -16,6 +16,8 @@ type Props = {
   onOpenList: (id: number) => void;
   onDeleteSmart: (id: number) => void;
   onOpenShareDialog: (id: number) => void;
+  onMoveUp: (id: number) => void;
+  onMoveDown: (id: number) => void;
 };
 
 export const ListCard = ({
@@ -25,6 +27,8 @@ export const ListCard = ({
   onOpenList,
   onDeleteSmart,
   onOpenShareDialog,
+  onMoveUp,
+  onMoveDown,
 }: Props) => {
   const menuBtnRef = useRef<View | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
@@ -49,7 +53,6 @@ const deleteLabel = derivedIsShared && !isOwner ? 'הסר עבורי' : 'מחי�
     <TouchableOpacity
       activeOpacity={0.8}
       onPress={() => onOpenList(item.id)}
-      onLongPress={() => setMenuOpen(true)}
       style={styles.card}
     >
       {/* Header: title + status on the same row */}
@@ -140,6 +143,8 @@ const deleteLabel = derivedIsShared && !isOwner ? 'הסר עבורי' : 'מחי�
           requestAnimationFrame(() => onOpenShareDialog(item.id));
         }}
         onDeletePress={() => onDeleteSmart(item.id)}
+        onMoveUpPress={() => onMoveUp(item.id)}
+        onMoveDownPress={() => onMoveDown(item.id)}
         isDeleting={isDeleting}
         canShare={canShare}
         deleteLabel={deleteLabel}

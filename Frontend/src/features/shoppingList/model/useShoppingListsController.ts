@@ -132,7 +132,12 @@ export function useShoppingListsController(initial: ShoppingListData[] = []) {
         const remote = await repo.fetchLists(20);
         if (!mounted) return;
 
-        const sorted = sortByOrder(remote);
+        // Always re-index so shared lists are last
+        const owners = remote.filter(l => !l.isShared || l.isOwner);
+        const shared = remote.filter(l => l.isShared && !l.isOwner);
+        const ownersWithOrder = owners.map((l, idx) => ({ ...l, order: idx }));
+        const sharedWithOrder = shared.map((l, idx) => ({ ...l, order: ownersWithOrder.length + idx }));
+        const sorted = [...ownersWithOrder, ...sharedWithOrder];
 
         // Mark external apply so onPersist will not save to server.
         isApplyingExternalUpdateRef.current = true;

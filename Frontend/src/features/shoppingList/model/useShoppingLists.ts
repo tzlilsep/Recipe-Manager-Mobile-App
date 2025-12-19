@@ -41,8 +41,18 @@ export function useShoppingLists(
   onPersist?: PersistFn, // לשמירת רשימות/סדר
   onDelete?: DeleteFn,   // מחיקה בענן (או leave לפי ה־Container)
 ) {
+  // Defensive: assign order to any list missing it (e.g. shared lists from server)
+  // Shared lists (isShared && !isOwner) always get order at the end
+  // Always re-index orders so shared lists are last, regardless of incoming order
+  const initialWithOrder = (() => {
+    const owners = initial.filter(l => !l.isShared || l.isOwner);
+    const shared = initial.filter(l => l.isShared && !l.isOwner);
+    const ownersWithOrder = owners.map((l, idx) => ({ ...l, order: idx }));
+    const sharedWithOrder = shared.map((l, idx) => ({ ...l, order: ownersWithOrder.length + idx }));
+    return [...ownersWithOrder, ...sharedWithOrder];
+  })();
   const [lists, setLists] = useState<ShoppingListData[]>(
-    [...initial].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    initialWithOrder.sort((a, b) => ((a.order ?? 0) - (b.order ?? 0)))
   );
   const [selectedListId, setSelectedListId] = useState<number | null>(null);
 
@@ -73,7 +83,7 @@ export function useShoppingLists(
     setLists(prev => {
       const filtered = prev.filter(l => l.id !== listId);
       const reindexed = filtered
-        .sort((a, b) => a.order - b.order)
+        .sort((a, b) => ((a.order ?? 0) - (b.order ?? 0)))
         .map((l, idx) => ({ ...l, order: idx }));
       onDelete?.(listId, reindexed);
       return reindexed;
@@ -140,7 +150,7 @@ export function useShoppingLists(
   const reorderLists = (sourceIndex: number, destIndex: number) => {
     if (sourceIndex === destIndex) return;
     setLists(prev => {
-      const arr = [...prev].sort((a, b) => a.order - b.order);
+      const arr = [...prev].sort((a, b) => ((a.order ?? 0) - (b.order ?? 0)));
       const [moved] = arr.splice(sourceIndex, 1);
       arr.splice(destIndex, 0, moved);
       return arr.map((l, idx) => ({ ...l, order: idx }));
@@ -149,7 +159,7 @@ export function useShoppingLists(
 
   const moveListBefore = (movedId: number, beforeId: number | null) => {
     setLists(prev => {
-      const arr = [...prev].sort((a, b) => a.order - b.order);
+      const arr = [...prev].sort((a, b) => ((a.order ?? 0) - (b.order ?? 0)));
       const from = arr.findIndex(l => l.id === movedId);
       if (from < 0) return prev;
       const [moved] = arr.splice(from, 1);
@@ -164,11 +174,18 @@ export function useShoppingLists(
   /** מחליף רשימה מעודכנת מהשרת (כולל שדות השיתוף) עם נרמול 0..1 שותף */
   const replaceList = (updated: ShoppingListData) => {
     const normalized = normalizeShareMeta(updated);
-    setLists(prev =>
-      prev.some(l => l.id === normalized.id)
-        ? prev.map(l => (l.id === normalized.id ? { ...l, ...normalized } : l))
-        : [...prev, normalized]
-    );
+    setLists(prev => {
+      if (prev.some(l => l.id === normalized.id)) {
+        // Update existing list
+        return prev.map(l => (l.id === normalized.id ? { ...l, ...normalized } : l));
+      } else {
+        // Always add new shared list at the end, ignore incoming order
+        let usedOrders = new Set(prev.map(l => l.order ?? -1));
+        let nextOrder = prev.length === 0 ? 0 : Math.max(...Array.from(usedOrders)) + 1;
+        while (usedOrders.has(nextOrder)) nextOrder++;
+        return [...prev, { ...normalized, order: nextOrder }];
+      }
+    });
   };
 
   /** עדכון מטא־דאטה לשיתוף מקומית (למשל אופטימיות "pending") – עם נרמול 0..1 */
@@ -188,7 +205,7 @@ export function useShoppingLists(
   };
 
   const orderedLists = useMemo(
-    () => [...lists].sort((a, b) => a.order - b.order),
+    () => [...lists].sort((a, b) => ((a.order ?? 0) - (b.order ?? 0))),
     [lists]
   );
 

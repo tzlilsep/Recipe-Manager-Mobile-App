@@ -108,6 +108,30 @@ export function ShoppingListsScreen({
     }
   }, [onShareList, shareForId, shareIdentifier, lists]);
 
+  const moveListUp = useCallback(
+    (id: number) => {
+      const index = lists.findIndex((list) => list.id === id);
+      if (index > 0) {
+        const updatedLists = [...lists];
+        [updatedLists[index - 1], updatedLists[index]] = [updatedLists[index], updatedLists[index - 1]];
+        onReorder?.(updatedLists);
+      }
+    },
+    [lists, onReorder]
+  );
+
+  const moveListDown = useCallback(
+    (id: number) => {
+      const index = lists.findIndex((list) => list.id === id);
+      if (index < lists.length - 1) {
+        const updatedLists = [...lists];
+        [updatedLists[index], updatedLists[index + 1]] = [updatedLists[index + 1], updatedLists[index]];
+        onReorder?.(updatedLists);
+      }
+    },
+    [lists, onReorder]
+  );
+
   // Show empty state only when not loading and truly empty.
   const showEmpty = !isLoading && lists.length === 0;
 
@@ -131,7 +155,7 @@ export function ShoppingListsScreen({
           keyExtractor={keyExtractor}
           activationDistance={6}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-          contentContainerStyle={{ paddingBottom: 12 }}
+          contentContainerStyle={{ paddingBottom: 85 , paddingTop: 4}}
           renderItem={({ item }) => (
             <ListCard
               item={item}
@@ -140,6 +164,8 @@ export function ShoppingListsScreen({
               onOpenList={onOpenList}
               onDeleteSmart={handleDeleteSmart}
               onOpenShareDialog={openShareDialog}
+              onMoveUp={moveListUp}
+              onMoveDown={moveListDown}
             />
           )}
           onDragEnd={({ data }) => onReorder?.(data)}
