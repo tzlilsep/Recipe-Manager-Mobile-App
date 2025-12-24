@@ -101,6 +101,7 @@ export function RecipeFiltersModal({
                   }
                 }}
                 placeholder="00"
+                placeholderTextColor="#9CA3AF"
                 style={styles.timeInput}
                 textAlign="center"
                 keyboardType="number-pad"
@@ -114,6 +115,7 @@ export function RecipeFiltersModal({
                   setMaxTimeHours(num);
                 }}
                 placeholder="00"
+                placeholderTextColor="#9CA3AF"
                 style={styles.timeInput}
                 textAlign="center"
                 keyboardType="number-pad"

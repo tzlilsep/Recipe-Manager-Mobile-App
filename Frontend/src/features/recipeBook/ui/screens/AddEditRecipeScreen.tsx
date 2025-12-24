@@ -178,6 +178,7 @@ export function AddEditRecipeScreen({ editingRecipe, onSave }: Props) {
           value={title}
           onChangeText={setTitle}
           placeholder="לדוגמה: עוגת שוקולד"
+          placeholderTextColor="#9CA3AF"
           style={styles.input}
           textAlign="right"
           returnKeyType="done"
@@ -197,6 +198,7 @@ export function AddEditRecipeScreen({ editingRecipe, onSave }: Props) {
                   }
                 }}
                 placeholder="00"
+                placeholderTextColor="#9CA3AF"
                 style={styles.timeInput}
                 textAlign="center"
                 keyboardType="number-pad"
@@ -212,6 +214,7 @@ export function AddEditRecipeScreen({ editingRecipe, onSave }: Props) {
                   setWorkHours(num);
                 }}
                 placeholder="00"
+                placeholderTextColor="#9CA3AF"
                 style={styles.timeInput}
                 textAlign="center"
                 keyboardType="number-pad"
@@ -233,6 +236,7 @@ export function AddEditRecipeScreen({ editingRecipe, onSave }: Props) {
                   }
                 }}
                 placeholder="00"
+                placeholderTextColor="#9CA3AF"
                 style={styles.timeInput}
                 textAlign="center"
                 keyboardType="number-pad"
@@ -248,6 +252,7 @@ export function AddEditRecipeScreen({ editingRecipe, onSave }: Props) {
                   setTotalHours(num);
                 }}
                 placeholder="00"
+                placeholderTextColor="#9CA3AF"
                 style={styles.timeInput}
                 textAlign="center"
                 keyboardType="number-pad"
@@ -265,6 +270,7 @@ export function AddEditRecipeScreen({ editingRecipe, onSave }: Props) {
           onChangeText={setServings}
           keyboardType="number-pad"
           placeholder="4"
+          placeholderTextColor="#9CA3AF"
           style={styles.input}
           textAlign="right"
           returnKeyType="done"
@@ -297,6 +303,7 @@ export function AddEditRecipeScreen({ editingRecipe, onSave }: Props) {
           value={tips}
           onChangeText={setTips}
           placeholder="הוסף טיפים שימושיים..."
+          placeholderTextColor="#9CA3AF"
           style={[styles.input, styles.textarea]}
           multiline
           textAlign="right"

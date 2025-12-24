@@ -41,6 +41,7 @@ export default function LoginForm({
           <TextInput
             style={styles.input}
             placeholder="שם משתמש"
+            placeholderTextColor="#9CA3AF"
             value={username}
             onChangeText={onChangeUsername}
             autoCapitalize="none"
@@ -48,6 +49,7 @@ export default function LoginForm({
           <TextInput
             style={styles.input}
             placeholder="סיסמה"
+            placeholderTextColor="#9CA3AF"
             value={password}
             onChangeText={onChangePassword}
             secureTextEntry

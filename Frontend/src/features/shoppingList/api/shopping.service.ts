@@ -96,7 +96,7 @@ function toList(rawDto: ShoppingListDto): ShoppingListData {
   };
 }
 
-const API_BASE_URL = 'http://192.168.1.51:5005/api';
+const API_BASE_URL = 'http://35.159.11.107:5005/api';
 
 async function http<T>(
   path: string,

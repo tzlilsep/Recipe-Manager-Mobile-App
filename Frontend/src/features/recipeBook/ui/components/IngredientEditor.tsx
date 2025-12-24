@@ -93,14 +93,29 @@ export function IngredientEditor({ value, onChange }: Props) {
         placeholder="כותרת קבוצה (אופציונלי)"
         style={styles.input}
         textAlign="right"
+        placeholderTextColor="#9CA3AF"
       />
 
       <View style={styles.row}>
-        <TextInput value={amount} onChangeText={setAmount} placeholder="כמות" style={[styles.input, styles.small]} textAlign="right" />
+        <TextInput 
+          value={amount} 
+          onChangeText={setAmount} 
+          placeholder="כמות" 
+          style={[styles.input, styles.small]} 
+          textAlign="right" 
+          placeholderTextColor="#9CA3AF"
+        />
         <TouchableOpacity onPress={() => setUnitModalOpen(true)}>
           <Text style={styles.unitPill}>{unit}</Text>
         </TouchableOpacity>
-        <TextInput value={name} onChangeText={setName} placeholder="שם המצרך" style={[styles.input, styles.flex]} textAlign="right" />
+        <TextInput
+          value={name}
+          onChangeText={setName}
+          placeholder="שם המצרך"
+          style={[styles.input, styles.flex]}
+          textAlign="right"
+          placeholderTextColor="#9CA3AF"
+        />
       </View>
 
       <Button onPress={add}><Text style={styles.primaryText}>הוסף מצרך</Text></Button>

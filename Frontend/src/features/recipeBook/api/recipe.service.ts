@@ -148,7 +148,7 @@ function mapBackendToRecipe(backendRecipe: any): Recipe {
 }
 
 // TODO: Update this URL to match your backend server
-const API_BASE_URL = 'http://192.168.1.51:5005/api';
+const API_BASE_URL = 'http://35.159.11.107:5005/api';
 
 // Helper function to get auth token from storage
 async function getAuthToken(): Promise<string | null> {

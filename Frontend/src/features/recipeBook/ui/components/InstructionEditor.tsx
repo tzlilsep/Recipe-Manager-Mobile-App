@@ -51,6 +51,7 @@ export function InstructionEditor({ value, onChange }: Props) {
         value={text}
         onChangeText={setText}
         placeholder="הוסף שלב טקסט"
+        placeholderTextColor="#9CA3AF"
         style={styles.input}
         textAlign="right"
       />
